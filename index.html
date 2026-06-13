@@ -246,6 +246,23 @@ const POKEMON_DEX = {
   hamster: [null, 172,  25,  26],   // Pichu, Pikachu, Raichu
   parrot:  [null, 333, 334],        // Swablu, Altaria
 };
+var BACKGROUNDS = [
+  {id:'default', name:'Grassy Field',    emoji:'🌿', cost:0,
+   gradient:'linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 48%,#86efac 48%,#4ade80 100%)',
+   sun:true, clouds:true, tree:true, flower:true},
+  {id:'backyard',name:'Backyard',        emoji:'🏡', cost:10,
+   gradient:'linear-gradient(to bottom,#fef9c3 0%,#fde68a 45%,#bbf7d0 45%,#4ade80 100%)',
+   sun:true, clouds:true, house:true},
+  {id:'forest',  name:'Enchanted Forest',emoji:'🌲', cost:20,
+   gradient:'linear-gradient(to bottom,#d1fae5 0%,#4ade80 45%,#166534 45%,#14532d 100%)',
+   tree:true, mushroom:true},
+  {id:'fantasy', name:'Fantasy Castle',  emoji:'🏰', cost:25,
+   gradient:'linear-gradient(to bottom,#ede9fe 0%,#c4b5fd 45%,#6d28d9 45%,#4c1d95 100%)',
+   stars:true, castle:true},
+  {id:'beach',   name:'Sunny Beach',     emoji:'🏖️', cost:30,
+   gradient:'linear-gradient(to bottom,#bae6fd 0%,#38bdf8 50%,#fde68a 50%,#fbbf24 100%)',
+   sun:true, waves:true, palm:true},
+];
 function getPokemonSprite(speciesId, stageIdx) {
   var dex=POKEMON_DEX[speciesId]; if(!dex) return null;
   var id=dex[stageIdx]; if(!id) return null;
@@ -541,7 +558,7 @@ function PetArt({pet, size}) {
 }
 
 // ── Live Pet (animated, interactive — lives in the Pet Yard) ───────────────────
-function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
+function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos, sceneOnly}) {
   var pet=kid.pet, sp=getSpecies(pet.id), info=getStageInfo(sp,pet.growthPoints||0);
   var isEgg=info.stageIdx===0;
   var isAdult=info.stageIdx===sp.stages.length-1;
@@ -699,6 +716,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
           {hungerLowDays>=2&&!isEgg&&!sleeping&&<span className="animate-pulse text-orange-500">⚠️{hungerLowDays}</span>}
         </div>
         {/* micro stat bars: hunger / joy / energy (egg shows hatch progress) */}
+        {!sceneOnly && (
         <div className="bg-white/80 rounded-md px-1 py-0.5 mt-1 mb-0.5 shadow space-y-0.5" style={{width:58}}>
           {isEgg
             ? <div className="flex items-center gap-0.5"><span style={{fontSize:8,lineHeight:1}}>🐣</span><div className="flex-1 bg-gray-200 rounded-full h-1"><div className="h-1 rounded-full bg-purple-400 transition-all" style={{width:info.progressPct+"%"}}/></div></div>
@@ -713,9 +731,10 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
                 );
               })}
         </div>
-        {isEgg&&<span className="font-bold text-purple-700/80 leading-none mb-0.5" style={{fontSize:10}}>{info.ptsToNext} pts to hatch!</span>}
+        )}
+        {!sceneOnly && isEgg&&<span className="font-bold text-purple-700/80 leading-none mb-0.5" style={{fontSize:10}}>{info.ptsToNext} pts to hatch!</span>}
         {/* Home/bed indicator in the yard */}
-        {homeItemDef&&!isEgg&&(
+        {!sceneOnly&&homeItemDef&&!isEgg&&(
           <div className="bg-white/80 rounded-md px-1.5 py-0.5 mb-0.5 shadow" style={{fontSize:10,lineHeight:1.2}}>
             <span>{homeItemDef.emoji}</span>
             <span className="text-gray-500 ml-0.5">{homeItemDef.speedBonus}×</span>
@@ -733,6 +752,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
           </span>
         </button>
         {/* care buttons */}
+        {!sceneOnly && (
         <div className="flex gap-0.5 mt-0.5">
           <button onClick={doPat} disabled={sleeping} title={"Pat (+joy)"+(petConfig.patCost>0?" — "+petConfig.patCost+" pts":"")}
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":"bg-white/85 hover:bg-pink-100")}>✋</button>
@@ -745,6 +765,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
           {!isEgg&&<button onClick={doBath} disabled={sleeping} title={"Give a bath"+(petConfig.bathCost>0?" — "+petConfig.bathCost+" pts":"")+" · "+daysSinceBath+"d since last bath"}
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":bathDanger?"bg-blue-300 animate-pulse":bathWarn?"bg-blue-200":"bg-white/85 hover:bg-blue-100")}>🛁</button>}
         </div>
+        )}
       </div>
     </div>
   );
@@ -769,6 +790,182 @@ function PetYard({kids, shopItems, petConfig, onAction, onFeed, height}) {
         var spread=(idx+1)*100/(withPets.length+1);
         return <LivePet key={k.id} kid={k} shopItems={shopItems} petConfig={petConfig} onAction={onAction} onFeed={onFeed} initPos={Math.min(84,Math.max(10,spread))}/>;
       })}
+    </div>
+  );
+}
+
+// ── Home Pet Scene (personal dashboard — only current kid's pet) ───────────────
+function HomePetScene({kid, shopItems, petConfig, onAction, onFeed, onChangePet, minCost}) {
+  var sfState=useState(false); var showFeed=sfState[0]; var setShowFeed=sfState[1];
+
+  if(!kid.pet) return (
+    <div className="text-center py-10 bg-white/70 rounded-2xl border-2 border-dashed border-purple-200 mb-4">
+      <p className="text-5xl mb-3">🥚</p>
+      <p className="text-gray-600 font-bold mb-1">No pet yet!</p>
+      <p className="text-gray-400 text-xs mb-5">Earn points to adopt your first pet!</p>
+      <button onClick={onChangePet} disabled={kid.balance<minCost}
+        className={"px-6 py-2.5 rounded-xl font-bold text-sm transition "+(kid.balance>=minCost?"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+        {kid.balance>=minCost?"Adopt a Pet 🐾":"Need "+minCost+"+ pts"}
+      </button>
+    </div>
+  );
+
+  var pet=kid.pet, sp=getSpecies(pet.id), info=getStageInfo(sp,pet.growthPoints||0);
+  var isEgg=info.stageIdx===0, isAdult=info.stageIdx===sp.stages.length-1;
+  var tired=pet.fatigue>75, sleeping=!!pet.sleeping, hungry=pet.hunger<30;
+  var daysSinceBath=pet.daysSinceBath||0;
+  var bathWarn=daysSinceBath>=7, bathDanger=daysSinceBath>=9;
+  var homeItemDef=pet.homeItem?((shopItems.home||[]).find(function(h){return h.id===pet.homeItem;})||null):null;
+  var prefNames=(sp.preferredFood||[]).map(function(fid){var f=shopItems.food.find(function(fi){return fi.id===fid;});return f?f.name:null;}).filter(Boolean).join(' & ');
+
+  // Sleep window
+  var sleepStart=petConfig.sleepStart??-1, sleepEnd=petConfig.sleepEnd??-1;
+  var inSleepWindow=false;
+  if(sleepStart>=0&&sleepEnd>=0&&sleepStart!==sleepEnd){
+    var h=new Date().getHours();
+    inSleepWindow=sleepStart<=sleepEnd?(h>=sleepStart&&h<sleepEnd):(h>=sleepStart||h<sleepEnd);
+  }
+
+  // If sleep window active, override kid.pet.sleeping so LivePet shows sleep animation
+  var kidForScene=kid;
+  if(inSleepWindow&&!sleeping){
+    var now2=new Date(), endH=new Date(now2); endH.setHours(sleepEnd,0,0,0);
+    if(endH<=now2) endH.setDate(endH.getDate()+1);
+    var overrideSleepUntil=Math.floor(endH.getTime()/1000);
+    kidForScene=Object.assign({},kid,{pet:Object.assign({},pet,{sleeping:true,sleepUntil:overrideSleepUntil})});
+  }
+  var isSleeping=sleeping||inSleepWindow;
+
+  // Background
+  var bgDef=BACKGROUNDS.find(function(b){return b.id===(pet.petBg||'default');})||BACKGROUNDS[0];
+
+  var stats=[
+    {label:'Hunger',val:pet.hunger,icon:'🍖',cls:pet.hunger>=60?'bg-green-400':pet.hunger>=30?'bg-yellow-400':'bg-red-400 animate-pulse'},
+    {label:'Joy',   val:pet.joy,   icon:'😊',cls:pet.joy>=60?'bg-pink-400':pet.joy>=30?'bg-yellow-400':'bg-red-400 animate-pulse'},
+    {label:'Energy',val:100-pet.fatigue,icon:'⚡',cls:pet.fatigue<=40?'bg-blue-400':pet.fatigue<=75?'bg-yellow-400':'bg-red-400 animate-pulse'},
+  ];
+
+  return (
+    <div>
+      {/* Scene */}
+      <div className="rounded-2xl border-2 border-purple-200 mb-3 relative shadow-lg" style={{height:300,background:bgDef.gradient}}>
+        <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{pointerEvents:'none'}}>
+          {bgDef.sun&&<span style={{position:'absolute',top:8,right:14,fontSize:28}}>☀️</span>}
+          {bgDef.clouds&&<><span className="cloud" style={{position:'absolute',top:10,fontSize:22,opacity:.85,animation:'cloudDrift 55s linear infinite'}}>☁️</span><span className="cloud" style={{position:'absolute',top:30,fontSize:16,opacity:.7,animation:'cloudDrift 80s linear infinite',animationDelay:'-30s'}}>☁️</span></>}
+          {bgDef.tree&&<span style={{position:'absolute',bottom:6,left:10,fontSize:26}}>🌳</span>}
+          {bgDef.flower&&<span style={{position:'absolute',bottom:8,right:12,fontSize:20}}>🌷</span>}
+          {bgDef.house&&<span style={{position:'absolute',bottom:6,left:10,fontSize:28}}>🏡</span>}
+          {bgDef.mushroom&&<span style={{position:'absolute',bottom:6,left:10,fontSize:24}}>🍄</span>}
+          {bgDef.stars&&<><span style={{position:'absolute',top:15,left:22,fontSize:18,animation:'zzzFloat 3s ease-in-out infinite'}}>⭐</span><span style={{position:'absolute',top:28,right:32,fontSize:14,animation:'zzzFloat 3s ease-in-out infinite',animationDelay:'1.5s'}}>✨</span></>}
+          {bgDef.castle&&<span style={{position:'absolute',bottom:6,right:10,fontSize:28}}>🏰</span>}
+          {bgDef.waves&&<span style={{position:'absolute',bottom:6,left:10,fontSize:24,animation:'cloudDrift 8s linear infinite'}}>🌊</span>}
+          {bgDef.palm&&<span style={{position:'absolute',bottom:6,right:10,fontSize:24}}>🌴</span>}
+        </div>
+        <LivePet key={kid.id} kid={kidForScene} shopItems={shopItems} petConfig={petConfig} onAction={onAction} onFeed={onFeed} initPos={50} sceneOnly={true}/>
+      </div>
+
+      {/* Name + stage + bed */}
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          {pet.petName&&<p className="text-xl font-black text-gray-800">"{pet.petName}"</p>}
+          <p className={"text-sm font-bold "+(pet.petName?"text-gray-500":"text-gray-700")}>
+            {isEgg?sp.name+' Egg':info.stage.name}{isAdult?' 👑':''}
+            {isSleeping?' 💤':''}
+          </p>
+        </div>
+        {homeItemDef&&(
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
+            <span className="text-lg">{homeItemDef.emoji}</span>
+            <div>
+              <p className="text-xs font-bold text-emerald-700 leading-none">{homeItemDef.name}</p>
+              <p className="text-xs text-emerald-500">{homeItemDef.speedBonus}× rest speed</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stat bars */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3 space-y-2.5 shadow-sm">
+        {stats.map(function(s){
+          return (
+            <div key={s.label} className="flex items-center gap-2">
+              <span className="text-base w-6 text-center">{s.icon}</span>
+              <span className="text-xs font-medium text-gray-500 w-12">{s.label}</span>
+              <div className="flex-1 bg-gray-100 rounded-full h-3">
+                <div className={"h-3 rounded-full transition-all "+s.cls} style={{width:s.val+'%'}}/>
+              </div>
+              <span className="text-xs font-bold text-gray-600 w-8 text-right">{s.val}%</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action buttons */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div>
+          <button onClick={function(){setShowFeed(function(v){return !v;});}} disabled={isSleeping}
+            className={"w-full py-3 rounded-xl font-bold text-sm transition "+(isSleeping?"bg-gray-100 text-gray-300":hungry?"bg-red-100 hover:bg-red-200 text-red-700 animate-pulse":"bg-green-100 hover:bg-green-200 text-green-700")}>
+            🍎 {isEgg?"Feed Egg":"Feed"}{hungry&&!isSleeping?" 😫":""}
+          </button>
+          {showFeed&&!isSleeping&&(
+            <div className="mt-1.5 bg-white rounded-xl border border-gray-100 shadow-sm p-2 space-y-1">
+              {shopItems.food.map(function(f){
+                var isPref=(sp.preferredFood||[]).includes(f.id);
+                var ok=kid.balance>=f.cost;
+                return (
+                  <button key={f.id} disabled={!ok}
+                    onClick={function(){onFeed(kid,f);setShowFeed(false);}}
+                    className={"w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition "+(ok?(isPref?"bg-purple-50 hover:bg-purple-100 text-purple-700":"bg-gray-50 hover:bg-gray-100 text-gray-700"):"bg-gray-50 text-gray-300 cursor-not-allowed")}>
+                    <span className="text-base">{f.emoji}</span>
+                    <span className="flex-1 text-left">{f.name}{isPref&&" 💫"}</span>
+                    <span className="text-gray-400">{f.cost}p</span>
+                  </button>
+                );
+              })}
+              <p className="text-center text-xs text-gray-400 pt-1">{kid.name}: {kid.balance} pts</p>
+            </div>
+          )}
+        </div>
+        {!isEgg&&(
+          <button onClick={function(){onAction(kid,'play');}} disabled={isSleeping||tired}
+            className={"py-3 rounded-xl font-bold text-sm transition "+(isSleeping||tired?"bg-gray-100 text-gray-300":"bg-blue-100 hover:bg-blue-200 text-blue-700")}>
+            ⚽ Play{petConfig.playCost>0?" · "+petConfig.playCost+"p":""}
+          </button>
+        )}
+        {!isEgg&&(
+          <button onClick={function(){onAction(kid,'rest');}} disabled={isSleeping}
+            className={"py-3 rounded-xl font-bold text-sm transition "+(isSleeping?"bg-gray-100 text-gray-300":tired?"bg-indigo-200 hover:bg-indigo-300 text-indigo-700 animate-pulse":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
+            💤 Rest
+          </button>
+        )}
+        {!isEgg&&(
+          <button onClick={function(){onAction(kid,'bath');}} disabled={isSleeping}
+            className={"py-3 rounded-xl font-bold text-sm transition "+(isSleeping?"bg-gray-100 text-gray-300":bathDanger?"bg-red-200 hover:bg-red-300 text-red-700 animate-pulse":bathWarn?"bg-blue-200 hover:bg-blue-300 text-blue-700":"bg-cyan-100 hover:bg-cyan-200 text-cyan-700")}>
+            🛁 Clean{petConfig.bathCost>0?" · "+petConfig.bathCost+"p":""}
+          </button>
+        )}
+      </div>
+
+      {/* Growth bar */}
+      {!isAdult&&info.nextStage&&(
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3 shadow-sm">
+          <div className="flex justify-between text-xs mb-1.5">
+            <span className="font-bold text-purple-600">✨ Evolving → <span className="text-purple-800">{info.nextStage.name}</span></span>
+            <span className="text-gray-400">{info.ptsToNext} pts to go</span>
+          </div>
+          <div className="w-full bg-purple-100 rounded-full h-3">
+            <div className="h-3 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 transition-all" style={{width:info.progressPct+"%"}}/>
+          </div>
+          {prefNames&&<p className="text-xs text-purple-400 mt-1.5">💫 Fave food: <span className="font-bold">{prefNames}</span></p>}
+        </div>
+      )}
+      {isAdult&&<p className="text-center text-xs font-black text-amber-600 mb-3">👑 Fully grown!</p>}
+
+      {/* Change pet */}
+      <button onClick={onChangePet}
+        className="w-full py-2.5 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 transition">
+        🔄 Change Pet
+      </button>
     </div>
   );
 }
@@ -903,6 +1100,7 @@ function ShopPanel({kid, shopItems, onBuy}) {
   if(!kid) return null;
   var petSp=kid.pet?getSpecies(kid.pet.id):null;
   var currentHomeId=kid.pet?kid.pet.homeItem:null;
+  var currentBgId=kid.pet?(kid.pet.petBg||'default'):null;
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
@@ -961,6 +1159,34 @@ function ShopPanel({kid, shopItems, onBuy}) {
                   <button disabled={!canAfford} onClick={function(){onBuy(item);}}
                     className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isOwned?"bg-green-100 text-green-600 cursor-not-allowed":canAfford?"bg-indigo-500 hover:bg-indigo-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
                     {isOwned?"Owned":item.cost+" pts"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* Backgrounds */}
+      {(shopItems.backgrounds||[]).length>0&&(
+        <div className="mb-5">
+          <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">🎨 Scene Backgrounds</h3>
+          <p className="text-xs text-purple-500 mb-2 bg-purple-50 rounded-xl px-3 py-2">🌈 Change your pet's home scene background!</p>
+          <div className="space-y-2">
+            {(shopItems.backgrounds||[]).map(function(item){
+              var isOwned=currentBgId===item.id;
+              var canAfford=!!kid.pet&&kid.balance>=item.cost&&!isOwned;
+              return (
+                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isOwned?"bg-purple-50 border-purple-200":"bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>
+                    <div className="min-w-0">
+                      <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
+                      {isOwned&&<span className="text-xs text-purple-600 font-bold ml-1.5">✓ Active</span>}
+                    </div>
+                  </div>
+                  <button disabled={isOwned||!canAfford} onClick={function(){onBuy(item);}}
+                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isOwned?"bg-purple-100 text-purple-600 cursor-not-allowed":canAfford?"bg-purple-500 hover:bg-purple-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                    {isOwned?"Active":item.cost+" pts"}
                   </button>
                 </div>
               );
@@ -1522,6 +1748,23 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
               className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
             <span className="text-xs text-gray-400">pts</span>
           </div>
+          <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100 w-full">
+            <span className="text-lg">🌙</span><span className="text-xs font-bold text-gray-600">Sleep time</span>
+            <select value={petConfig.sleepStart??-1} key={'pcfg_ss_'+(petConfig.sleepStart??-1)}
+              onChange={function(e){onUpdatePetConfig('sleepStart',parseInt(e.target.value));}}
+              className="border border-indigo-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value={-1}>Off</option>
+              {[18,19,20,21,22,23,0,1,2].map(function(i){return <option key={i} value={i}>{i===0?'12am':i<12?i+'am':i===12?'12pm':(i-12)+'pm'}</option>;})}
+            </select>
+            <span className="text-xs text-gray-400">to</span>
+            <select value={petConfig.sleepEnd??-1} key={'pcfg_se_'+(petConfig.sleepEnd??-1)}
+              onChange={function(e){onUpdatePetConfig('sleepEnd',parseInt(e.target.value));}}
+              className="border border-indigo-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value={-1}>Off</option>
+              {[0,1,2,3,4,5,6,7,8,9,10].map(function(i){return <option key={i} value={i}>{i===0?'12am':i<12?i+'am':i===12?'12pm':(i-12)+'pm'}</option>;})}
+            </select>
+            <span className="text-xs text-gray-400">pet time</span>
+          </div>
         </div>
         <p className="text-xs text-gray-400 mb-4 bg-amber-50 rounded-xl px-3 py-2">⚠️ <strong>Survival rules:</strong> Each species has daily hunger decay (fish 5/day → dragon 40/day). Hunger below 20% for 3 consecutive days = starvation death. No bath for 10 days = death too. Evolution requires species_cost × 20 growth points per stage.</p>
         <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-2.5 mt-2">🐾 Adoption Costs</h3>
@@ -1767,8 +2010,7 @@ function TabPanel({kid, kidTab, setKidTab, shopItems, petCatalogue, petConfig, m
   if(kidTab==='home') return (
     <div>
       <IdentityBanner kid={kid} c={c}/>
-      <PetYard kids={kids} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onFeed={H.onFeed} height={360}/>
-      {kids&&!kids.some(function(k){return !!k.pet;})&&<p className="text-center text-gray-400 text-sm py-4">No pets yet — earn points and visit Adopt! 🐾</p>}
+      <HomePetScene kid={kid} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onFeed={H.onFeed} onChangePet={function(){setKidTab('adopt');}} minCost={minCost}/>
     </div>
   );
   if(kidTab==='tasks') return <div><ProgressLine kid={kid}/><TaskSection kid={kid} onComplete={H.onComplete} onUndo={H.onUndo} celebratingTasks={celebrating}/></div>;
@@ -1903,7 +2145,7 @@ function DesktopLayout(props) {
 function App() {
   var kidsState = useState([]);
   var kids = kidsState[0]; var setKids = kidsState[1];
-  var siState = useState({food:[],toys:[],home:[]});
+  var siState = useState({food:[],toys:[],home:[],backgrounds:[]});
   var shopItems = siState[0]; var setShopItems = siState[1];
   var pcState = useState({});
   var petCosts = pcState[0]; var setPetCosts = pcState[1];
@@ -2019,12 +2261,14 @@ function App() {
     var sp=getSpecies(kidObj.pet.id);
     var isFood=shopItems.food.some(function(f){return f.id===item.id;});
     var isHome=(shopItems.home||[]).some(function(h){return h.id===item.id;});
+    var isBg=(shopItems.backgrounds||[]).some(function(b){return b.id===item.id;});
     var isPref=isFood&&(sp.preferredFood||[]).includes(item.id);
     var growthGain=isFood?(isPref?item.moodBoost:Math.ceil(item.moodBoost/2)):Math.ceil(item.moodBoost/5);
     var d=await callAPI('buy_item',{kidId:selId,itemId:item.id,cost:item.cost,moodBoost:item.moodBoost,growthGain:growthGain});
     if(d && d.error){ showToast(d.error||'Could not buy','error'); return; }
     applyState(d);
     if(isHome) showToast(sp.name+' moved into: '+item.name+'! '+item.emoji+' Rest speed '+item.speedBonus+'×!');
+    else if(isBg) showToast('Background changed to '+item.name+'! '+item.emoji);
     else showToast(sp.name+' loved the '+item.name+'! '+item.emoji+(isPref?' 💫 Fave!':''));
   }
 

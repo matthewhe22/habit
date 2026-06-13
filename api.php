@@ -103,7 +103,7 @@ function initDB(PDO $db): void {
         );
     ");
     // Migrate pets tables created before the petting / digital-pet features
-    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT"];
+    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT","pet_bg TEXT"];
     foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
     try { $db->exec("ALTER TABLE kids ADD COLUMN adoption_penalty INTEGER DEFAULT 0"); } catch (Exception $e) {}
     $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
@@ -208,12 +208,13 @@ function getState(PDO $db): array {
                 'daysSinceBath'=>$daysSinceBath,
                 'homeItem'=>$petRow['home_item'],
                 'petName'=>$petRow['pet_name'] ?: null,
+                'petBg'=>$petRow['pet_bg'] ?: 'default',
             ] : null,
         ];
     }
     $shop = defaultShopItems();
     foreach ($db->query("SELECT * FROM shop_overrides") as $ov) {
-        foreach (['food','toys','accessories','home'] as $cat)
+        foreach (['food','toys','home','backgrounds'] as $cat)
             foreach ($shop[$cat] as &$i)
                 if ($i['id']===$ov['item_id']) {
                     if ($ov['cost']!==null) $i['cost']=(int)$ov['cost'];
@@ -240,6 +241,8 @@ function getPetConfig(PDO $db): array {
         'playCost'=>(int)($cfg['playCost']??2),
         'restMinutes'=>(int)($cfg['restMinutes']??10),
         'bathCost'=>(int)($cfg['bathCost']??3),
+        'sleepStart'=>isset($cfg['sleepStart'])?(int)$cfg['sleepStart']:-1,
+        'sleepEnd'=>isset($cfg['sleepEnd'])?(int)$cfg['sleepEnd']:-1,
     ];
 }
 
@@ -308,6 +311,12 @@ function petAction(PDO $db, array $b): array {
     if (!$pet) return err('No pet');
     $cfg=getPetConfig($db); $now=time();
     $sleeping=((int)$pet['sleep_until'])>$now;
+    $sleepStart=(int)($cfg['sleepStart']??-1); $sleepEnd=(int)($cfg['sleepEnd']??-1);
+    if($sleepStart>=0&&$sleepEnd>=0&&$sleepStart!==$sleepEnd){
+        $h=(int)date('G');
+        $inWin=$sleepStart<=$sleepEnd?($h>=$sleepStart&&$h<$sleepEnd):($h>=$sleepStart||$h<$sleepEnd);
+        if($inWin) return err('Pet is resting for the night 🌙 ('.$sleepStart.':00–'.$sleepEnd.':00)');
+    }
 
     if ($type==='rest') {
         if ($sleeping) return err('Already taking a nap! 💤');
@@ -363,6 +372,8 @@ function updatePetConfig(PDO $db, array $b): array {
     foreach (['patCost','playCost','restMinutes','bathCost'] as $f)
         if (isset($b[$f])) $cfg[$f]=max(0,(int)$b[$f]);
     if ($cfg['restMinutes']<1) $cfg['restMinutes']=1;
+    foreach (['sleepStart','sleepEnd'] as $f)
+        if (array_key_exists($f,$b)) $cfg[$f]=(int)$b[$f];
     $db->prepare("INSERT INTO settings(key,value) VALUES('pet_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
        ->execute([json_encode($cfg)]);
     return getState($db);
@@ -412,6 +423,8 @@ function buyItem(PDO $db, array $b): array {
     elseif ($cat==='home')
         // Buying a home replaces any previous one — no mood effect, just sets the home_item
         $db->prepare("UPDATE pets SET home_item=? WHERE kid_id=?")->execute([$itemId,$kidId]);
+    elseif ($cat==='backgrounds')
+        $db->prepare("UPDATE pets SET pet_bg=? WHERE kid_id=?")->execute([$itemId,$kidId]);
     else
         $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
     $db->commit();
@@ -582,6 +595,12 @@ function defaultShopItems(): array {
             ['id'=>'pet_bed','name'=>'Cosy Pet Bed',  'emoji'=>'🛏️','cost'=>20,'moodBoost'=>0,'speedBonus'=>1.5],
             ['id'=>'luxury', 'name'=>'Luxury Bed',    'emoji'=>'🌟','cost'=>40,'moodBoost'=>0,'speedBonus'=>2.5],
             ['id'=>'palace', 'name'=>'Royal Palace',  'emoji'=>'🏰','cost'=>80,'moodBoost'=>0,'speedBonus'=>4.0],
+        ],
+        'backgrounds'=>[
+            ['id'=>'backyard','name'=>'Backyard',        'emoji'=>'🏡','cost'=>10,'moodBoost'=>0],
+            ['id'=>'forest',  'name'=>'Enchanted Forest','emoji'=>'🌲','cost'=>20,'moodBoost'=>0],
+            ['id'=>'fantasy', 'name'=>'Fantasy Castle',  'emoji'=>'🏰','cost'=>25,'moodBoost'=>0],
+            ['id'=>'beach',   'name'=>'Sunny Beach',     'emoji'=>'🏖️','cost'=>30,'moodBoost'=>0],
         ],
     ];
 }
