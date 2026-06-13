@@ -161,7 +161,7 @@ const PET_SPECIES = [
   { id:"ghost",   name:"Ghost",   emoji:"👻", cost:45, rare:true, preferredFood:["treat","snack"],
     stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#f3f4f6"},{name:"Gastly",threshold:10,art:"👻",bg:"#ede9fe",glow:"0 0 18px #c4b5fd"},{name:"Haunter",threshold:40,art:"👻",bg:"#ddd6fe",glow:"0 0 22px #a78bfa"},{name:"Gengar",threshold:100,art:"💜",bg:"#c4b5fd",glow:"0 0 28px #7c3aed"}]},
   { id:"kitten",  name:"Kitten",  emoji:"🐱", cost:20, preferredFood:["meal","snack"],
-    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fffbeb"},{name:"Kitten",threshold:8,art:"🐱",bg:"#fffbeb"},{name:"Cat",threshold:25,art:"🐱",bg:"#fef3c7",glow:"0 0 15px #fcd34d"},{name:"Elder",threshold:70,art:"🐈",bg:"#fde68a",glow:"0 0 25px #f59e0b"}]},
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fffbeb"},{name:"Sprigatito",threshold:8,art:"🐱",bg:"#dcfce7"},{name:"Floragato",threshold:25,art:"🐱",bg:"#bbf7d0",glow:"0 0 15px #86efac"},{name:"Meowscarada",threshold:70,art:"🎩",bg:"#4ade80",glow:"0 0 25px #22c55e"}]},
   { id:"doggy",   name:"Dog",     emoji:"🐶", cost:20, preferredFood:["snack","meal"],
     stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fefce8"},{name:"Lillipup",threshold:8,art:"🐶",bg:"#fef9c3"},{name:"Herdier",threshold:25,art:"🐶",bg:"#fef08a",glow:"0 0 15px #fde047"},{name:"Stoutland",threshold:70,art:"🐕",bg:"#fde047",glow:"0 0 25px #eab308"}]},
   { id:"fish",    name:"Fish",    emoji:"🐠", cost:10, preferredFood:["snack"],
@@ -170,8 +170,8 @@ const PET_SPECIES = [
     stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#eff6ff"},{name:"Squirtle",threshold:6,art:"🐢",bg:"#dbeafe"},{name:"Wartortle",threshold:20,art:"🐢",bg:"#bfdbfe",glow:"0 0 15px #93c5fd"},{name:"Blastoise",threshold:55,art:"🐢",bg:"#93c5fd",glow:"0 0 22px #3b82f6"}]},
   { id:"bunny",   name:"Bunny",   emoji:"🐰", cost:20, preferredFood:["snack","treat"],
     stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fff7ed"},{name:"Buneary",threshold:8,art:"🐰",bg:"#fef3c7",glow:"0 0 12px #fde047"},{name:"Lopunny",threshold:40,art:"🐇",bg:"#fde68a",glow:"0 0 20px #eab308"}]},
-  { id:"hamster", name:"Hamster", emoji:"🐹", cost:15, preferredFood:["snack"],
-    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fff7ed"},{name:"Pup",threshold:6,art:"🐹",bg:"#fff7ed"},{name:"Hamster",threshold:20,art:"🐹",bg:"#ffedd5",glow:"0 0 15px #fdba74"},{name:"Adult",threshold:55,art:"🐹",bg:"#fed7aa",glow:"0 0 20px #fb923c"}]},
+  { id:"hamster", name:"Hamster", emoji:"⚡", cost:15, preferredFood:["snack"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fefce8"},{name:"Pichu",threshold:6,art:"⚡",bg:"#fef9c3"},{name:"Pikachu",threshold:20,art:"⚡",bg:"#fef08a",glow:"0 0 15px #facc15"},{name:"Raichu",threshold:55,art:"⚡",bg:"#fde047",glow:"0 0 20px #eab308"}]},
   { id:"parrot",  name:"Parrot",  emoji:"🦜", cost:25, preferredFood:["snack","treat"],
     stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#f0f9ff"},{name:"Swablu",threshold:8,art:"🐦",bg:"#e0f2fe",glow:"0 0 12px #bae6fd"},{name:"Altaria",threshold:55,art:"🦜",bg:"#bfdbfe",glow:"0 0 20px #60a5fa"}]},
 ];
@@ -199,12 +199,17 @@ const maxDailyPts = function(kid) { return [...(kid.tasks.basic||[]),...(kid.tas
 const getSpecies  = function(id) { return PET_SPECIES.find(function(s){return s.id===id;})||PET_SPECIES[2]; };
 
 function getStageInfo(species, growthPts) {
-  var stages=species.stages; var idx=0;
-  for(var i=stages.length-1;i>=0;i--) if(growthPts>=stages[i].threshold){idx=i;break;}
-  var stage=stages[idx], next=stages[idx+1]||null;
+  // Each stage transition costs adoption_price × 20 accumulated growth points
+  var stages=species.stages; var costPerStage=species.cost*20; var idx=0;
+  for(var i=stages.length-1;i>=0;i--){
+    var thresh=i===0?0:i*costPerStage;
+    if(growthPts>=thresh){idx=i;break;}
+  }
+  var threshCur=idx===0?0:idx*costPerStage;
+  var next=stages[idx+1]||null;
   var pct=100,toNext=0;
-  if(next){var span=next.threshold-stage.threshold,done=growthPts-stage.threshold;pct=Math.min(100,Math.round(done/span*100));toNext=next.threshold-growthPts;}
-  return{stageIdx:idx,stage:stage,nextStage:next,progressPct:pct,ptsToNext:toNext};
+  if(next){var threshNext=(idx+1)*costPerStage;var span=threshNext-threshCur,done=growthPts-threshCur;pct=Math.min(100,Math.round(done/span*100));toNext=threshNext-growthPts;}
+  return{stageIdx:idx,stage:stages[idx],nextStage:next,progressPct:pct,ptsToNext:toNext};
 }
 
 async function callAPI(action, body) {
@@ -220,7 +225,7 @@ async function callAPI(action, body) {
 const SPECIES_ART = {
   dragon: {body:"#60a5fa", dark:"#1d4ed8", light:"#bfdbfe", belly:"#eff6ff", cheek:"#93c5fd", wing:"#818cf8"},
   ghost:  {body:"#8b5cf6", dark:"#4c1d95", light:"#c4b5fd", belly:"#ede9fe", cheek:"#7c3aed"},
-  kitten: {body:"#fdba74", dark:"#ea580c", light:"#fed7aa", belly:"#fff7ed", cheek:"#fb7185"},
+  kitten: {body:"#86efac", dark:"#16a34a", light:"#bbf7d0", belly:"#f0fdf4", cheek:"#fb7185"},
   doggy:  {body:"#c4a060", dark:"#7c5230", light:"#ddb87a", belly:"#f5e6d3", cheek:"#f9a8d4"},
   fish:   {body:"#fb923c", dark:"#c2410c", light:"#fed7aa", belly:"#fff7ed", cheek:"#fca5a5"},
   turtle: {body:"#60a5fa", dark:"#1d4ed8", light:"#bfdbfe", belly:"#dbeafe", cheek:"#93c5fd", shell:"#1e40af", shellDark:"#1e3a8a", shellLight:"#93c5fd"},
@@ -229,17 +234,17 @@ const SPECIES_ART = {
   parrot: {body:"#e0f2fe", dark:"#0369a1", light:"#ffffff", belly:"#f0f9ff", cheek:"#7dd3fc"},
 };
 
-// Pokédex numbers per species stage (null = egg / use SVG fallback)
+// Pokédex numbers per species & stage (index 0 = egg → use SVG fallback)
 const POKEMON_DEX = {
-  dragon:  [null, 147, 148, 149],  // Dratini, Dragonair, Dragonite
-  ghost:   [null,  92,  93,  94],  // Gastly, Haunter, Gengar
-  kitten:  [null,  52,  53,  53],  // Meowth, Persian, Persian
-  doggy:   [null, 506, 507, 508],  // Lillipup, Herdier, Stoutland
-  fish:    [null, 118, 119],       // Goldeen, Seaking
-  turtle:  [null,   7,   8,   9],  // Squirtle, Wartortle, Blastoise
-  bunny:   [null, 427, 428],       // Buneary, Lopunny
-  hamster: [null, 572, 573, 573],  // Minccino, Cinccino, Cinccino
-  parrot:  [null, 333, 334],       // Swablu, Altaria
+  dragon:  [null, 147, 148, 149],   // Dratini, Dragonair, Dragonite
+  ghost:   [null,  92,  93,  94],   // Gastly, Haunter, Gengar
+  kitten:  [null, 906, 907, 908],   // Sprigatito, Floragato, Meowscarada
+  doggy:   [null, 506, 507, 508],   // Lillipup, Herdier, Stoutland
+  fish:    [null, 118, 119],        // Goldeen, Seaking
+  turtle:  [null,   7,   8,   9],   // Squirtle, Wartortle, Blastoise
+  bunny:   [null, 427, 428],        // Buneary, Lopunny
+  hamster: [null, 172,  25,  26],   // Pichu, Pikachu, Raichu
+  parrot:  [null, 333, 334],        // Swablu, Altaria
 };
 function getPokemonSprite(speciesId, stageIdx) {
   var dex=POKEMON_DEX[speciesId]; if(!dex) return null;
@@ -543,6 +548,10 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
   var fs=isEgg?46:info.stageIdx===1?56:info.stageIdx===2?70:84;
   var sleeping=!!pet.sleeping;
   var hungry=pet.hunger<30, tired=pet.fatigue>75, sluggish=pet.fatigue>55||pet.hunger<40;
+  var daysSinceBath=pet.daysSinceBath||0;
+  var bathWarn=daysSinceBath>=7, bathDanger=daysSinceBath>=9;
+  var hungerLowDays=pet.hungerLowDays||0;
+  var homeItemDef=pet.homeItem?((shopItems.home||[]).find(function(h){return h.id===pet.homeItem;})||null):null;
 
   var posState=useState(function(){return initPos!==undefined?initPos:10+Math.random()*70;});
   var pos=posState[0]; var setPos=posState[1];
@@ -631,6 +640,10 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
     if(sleeping) return;
     await onAction(kid,'rest');
   }
+  async function doBath(){
+    if(sleeping) return;
+    await onAction(kid,'bath');
+  }
   async function doFeed(item){
     setShowFeed(false);
     var ok=await onFeed(kid,item);
@@ -681,6 +694,9 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
           {sleeping&&<span className="text-indigo-500">💤{napMins}m</span>}
           {hungry&&!isEgg&&!sleeping&&<span className="animate-pulse">😫</span>}
           {tired&&!hungry&&!isEgg&&!sleeping&&<span>🥱</span>}
+          {bathDanger&&!isEgg&&!sleeping&&<span className="animate-pulse text-red-500">🛁!</span>}
+          {!bathDanger&&bathWarn&&!isEgg&&!sleeping&&<span>🛁</span>}
+          {hungerLowDays>=2&&!isEgg&&!sleeping&&<span className="animate-pulse text-orange-500">⚠️{hungerLowDays}</span>}
         </div>
         {/* micro stat bars: hunger / joy / energy (egg shows hatch progress) */}
         <div className="bg-white/80 rounded-md px-1 py-0.5 mt-1 mb-0.5 shadow space-y-0.5" style={{width:58}}>
@@ -698,6 +714,13 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
               })}
         </div>
         {isEgg&&<span className="font-bold text-purple-700/80 leading-none mb-0.5" style={{fontSize:10}}>{info.ptsToNext} pts to hatch!</span>}
+        {/* Home/bed indicator in the yard */}
+        {homeItemDef&&!isEgg&&(
+          <div className="bg-white/80 rounded-md px-1.5 py-0.5 mb-0.5 shadow" style={{fontSize:10,lineHeight:1.2}}>
+            <span>{homeItemDef.emoji}</span>
+            <span className="text-gray-500 ml-0.5">{homeItemDef.speedBonus}×</span>
+          </div>
+        )}
         {/* the pet itself */}
         <button onClick={doPat} title={sleeping?"Shh… sleeping!":isEgg?"Tap to cuddle the egg!":"Tap to pat me!"}
           style={{cursor:sleeping?'default':'pointer',touchAction:'manipulation',background:'none',border:'none',padding:0,lineHeight:1}}>
@@ -719,6 +742,8 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":hungry?"bg-red-100 animate-pulse":"bg-white/85 hover:bg-green-100")}>🍎</button>
           {!isEgg&&<button onClick={doRest} disabled={sleeping} title="Take a nap (recovers energy)"
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":tired?"bg-indigo-100 animate-pulse":"bg-white/85 hover:bg-indigo-100")}>💤</button>}
+          {!isEgg&&<button onClick={doBath} disabled={sleeping} title={"Give a bath"+(petConfig.bathCost>0?" — "+petConfig.bathCost+" pts":"")+" · "+daysSinceBath+"d since last bath"}
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":bathDanger?"bg-blue-300 animate-pulse":bathWarn?"bg-blue-200":"bg-white/85 hover:bg-blue-100")}>🛁</button>}
         </div>
       </div>
     </div>
@@ -755,6 +780,10 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
   var m=moodLabel(pet.mood), isAdult=stageIdx===sp.stages.length-1, isEgg=stageIdx===0;
   var prefNames=(sp.preferredFood||[]).map(function(fid){var f=shopItems.food.find(function(fi){return fi.id===fid;});return f?f.name:null;}).filter(Boolean).join(" & ");
   var hungry=pet.hunger<30, tired=pet.fatigue>75;
+  var daysSinceBath=pet.daysSinceBath||0;
+  var bathWarn=daysSinceBath>=7, bathDanger=daysSinceBath>=9;
+  var hungerLowDays=pet.hungerLowDays||0;
+  var homeItem=pet.homeItem?((shopItems.home||[]).find(function(h){return h.id===pet.homeItem;})):null;
   var stats=[
     {label:"🍖 Hunger", val:pet.hunger, cls:pet.hunger>=60?"bg-green-400":pet.hunger>=30?"bg-yellow-400":"bg-red-400 animate-pulse"},
     {label:"😊 Joy",    val:pet.joy,    cls:pet.joy>=60?"bg-pink-400":pet.joy>=30?"bg-yellow-400":"bg-red-400 animate-pulse"},
@@ -768,6 +797,9 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
         {pet.sleeping&&<span className="text-xs bg-indigo-100 text-indigo-600 font-bold px-2 py-0.5 rounded-full">💤 Napping</span>}
         {hungry&&!pet.sleeping&&<span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full animate-pulse">😫 Needs food!</span>}
         {tired&&!pet.sleeping&&!hungry&&<span className="text-xs bg-blue-100 text-blue-600 font-bold px-2 py-0.5 rounded-full">🥱 Needs rest!</span>}
+        {bathDanger&&!isEgg&&<span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full animate-pulse">🛁 Bath overdue!</span>}
+        {!bathDanger&&bathWarn&&!isEgg&&<span className="text-xs bg-blue-100 text-blue-600 font-bold px-2 py-0.5 rounded-full">🛁 Bath soon!</span>}
+        {hungerLowDays>=2&&!isEgg&&<span className="text-xs bg-orange-100 text-orange-600 font-bold px-2 py-0.5 rounded-full animate-pulse">⚠️ Hungry {hungerLowDays}/3 days</span>}
       </div>
       <PetArt pet={pet} size="lg"/>
       <p className="text-lg font-black text-gray-800 -mt-1">{sp.name}</p>
@@ -783,7 +815,7 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
         })}
       </div>
       {/* care actions */}
-      <div className="pet-actions flex gap-1.5 w-full mt-1">
+      <div className="pet-actions flex gap-1.5 w-full mt-1 flex-wrap">
         <button onClick={function(){onAction(kid,'pat');}} disabled={pet.sleeping}
           className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":"bg-pink-100 hover:bg-pink-200 text-pink-700")}>
           ✋ Pat{petConfig.patCost>0?" · "+petConfig.patCost+"p":""}
@@ -796,7 +828,25 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
           className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
           💤 Rest
         </button>}
+        {!isEgg&&<button onClick={function(){onAction(kid,'bath');}} disabled={pet.sleeping}
+          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":bathDanger?"bg-red-200 hover:bg-red-300 text-red-700 animate-pulse":bathWarn?"bg-blue-200 hover:bg-blue-300 text-blue-700":"bg-cyan-100 hover:bg-cyan-200 text-cyan-700")}>
+          🛁 Bath{petConfig.bathCost>0?" · "+petConfig.bathCost+"p":""}
+        </button>}
       </div>
+      {/* Bath & hunger status strip */}
+      {!isEgg&&(
+        <div className="w-full flex flex-wrap gap-1.5 justify-center">
+          <span className={"text-xs px-2 py-0.5 rounded-full font-medium "+(bathDanger?"bg-red-100 text-red-600 font-bold animate-pulse":bathWarn?"bg-blue-100 text-blue-600":"bg-gray-100 text-gray-500")}>
+            🛁 {daysSinceBath===0?"Just bathed":daysSinceBath+"d since bath"}{bathDanger?" — OVERDUE!":bathWarn?" — bath soon!":""}
+          </span>
+          {hungerLowDays>0&&<span className={"text-xs px-2 py-0.5 rounded-full font-bold "+(hungerLowDays>=2?"bg-orange-100 text-orange-600 animate-pulse":"bg-yellow-100 text-yellow-700")}>
+            ⚠️ Low hunger {hungerLowDays}/3 days
+          </span>}
+          {homeItem&&<span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+            {homeItem.emoji} {homeItem.name} ({homeItem.speedBonus}×)
+          </span>}
+        </div>
+      )}
       {!isAdult&&<div className="w-full">
         <div className="flex justify-between text-xs mb-1"><span className="text-purple-500 font-bold">Growth → {nextStage ? nextStage.name : ""}</span><span className="text-gray-400">{ptsToNext} pts to go</span></div>
         <div className="w-full bg-purple-100 rounded-full h-2.5"><div className="h-2.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 transition-all" style={{width:progressPct+"%"}}/></div>
@@ -851,6 +901,7 @@ function TaskSection({kid, onComplete, onUndo, celebratingTasks}) {
 function ShopPanel({kid, shopItems, onBuy}) {
   if(!kid) return null;
   var petSp=kid.pet?getSpecies(kid.pet.id):null;
+  var currentHomeId=kid.pet?kid.pet.homeItem:null;
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
@@ -863,7 +914,7 @@ function ShopPanel({kid, shopItems, onBuy}) {
         <div key={cat} className="mb-5">
           <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">{cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}</h3>
           <div className="space-y-2">
-            {shopItems[cat].map(function(item){
+            {(shopItems[cat]||[]).map(function(item){
               var isPref=petSp&&cat==="food"&&(petSp.preferredFood||[]).includes(item.id);
               var canAfford=!!kid.pet&&kid.balance>=item.cost;
               return (
@@ -887,6 +938,35 @@ function ShopPanel({kid, shopItems, onBuy}) {
         </div>
         );
       })}
+      {/* Home & Beds */}
+      {(shopItems.home||[]).length>0&&(
+        <div className="mb-5">
+          <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">🏡 Home & Beds</h3>
+          <p className="text-xs text-blue-500 mb-2 bg-blue-50 rounded-xl px-3 py-2">💤 A better bed = faster energy recovery when resting!</p>
+          <div className="space-y-2">
+            {(shopItems.home||[]).map(function(item){
+              var isOwned=currentHomeId===item.id;
+              var canAfford=!!kid.pet&&kid.balance>=item.cost&&!isOwned;
+              return (
+                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isOwned?"bg-green-50 border-green-200":"bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>
+                    <div className="min-w-0">
+                      <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
+                      {isOwned&&<span className="text-xs text-green-600 font-bold ml-1.5">✓ Current home</span>}
+                      <span className="text-xs text-blue-500 ml-1.5">{item.speedBonus}× rest speed</span>
+                    </div>
+                  </div>
+                  <button disabled={!canAfford} onClick={function(){onBuy(item);}}
+                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isOwned?"bg-green-100 text-green-600 cursor-not-allowed":canAfford?"bg-indigo-500 hover:bg-indigo-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                    {isOwned?"Owned":item.cost+" pts"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1318,7 +1398,7 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
               {cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}
             </h3>
             <div className="space-y-2">
-              {shopItems[cat].map(function(item){
+              {(shopItems[cat]||[]).map(function(item){
                 return (
                 <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border flex-wrap">
                   <span className="text-2xl">{item.emoji}</span>
@@ -1341,8 +1421,30 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
           </div>
           );
         })}
+        {/* Home & Beds — cost configurable, speed bonus fixed */}
+        <div className="mb-5">
+          <h3 className="text-xs font-bold uppercase tracking-widest mb-2.5 text-teal-500">🏡 Home & Beds</h3>
+          <p className="text-xs text-gray-400 mb-2">Adjust bed prices. Speed bonus is fixed per item.</p>
+          <div className="space-y-2">
+            {(shopItems.home||[]).map(function(item){
+              return (
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border flex-wrap">
+                <span className="text-2xl">{item.emoji}</span>
+                <span className="font-bold text-gray-700 text-sm flex-1 min-w-[80px]">{item.name}</span>
+                <span className="text-xs text-blue-400">💤 {item.speedBonus}× rest</span>
+                <div className="flex items-center gap-1"><span className="text-xs text-gray-400">Cost</span>
+                  <input type="number" min="1" defaultValue={item.cost} key={item.id+'c'}
+                    onBlur={function(e){onUpdateShop(item.id,"cost",parseInt(e.target.value)||1);}}
+                    className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-teal-300"/>
+                  <span className="text-xs text-gray-400">pts</span>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        </div>
         <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-2.5 mt-2">💗 Pet Care Costs</h3>
-        <p className="text-xs text-gray-400 mb-2">How many points kids spend to pat or play with their pet, and how long a nap lasts. Set 0 to make it free (free pats are limited to one per 15 seconds).</p>
+        <p className="text-xs text-gray-400 mb-2">How many points kids spend on pet care. Set 0 to make it free (free pats are limited to one per 15 seconds).</p>
         <div className="flex flex-wrap gap-2 mb-5">
           <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
             <span className="text-lg">✋</span><span className="text-xs font-bold text-gray-600">Pat</span>
@@ -1365,7 +1467,15 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
               className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
             <span className="text-xs text-gray-400">min</span>
           </div>
+          <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
+            <span className="text-lg">🛁</span><span className="text-xs font-bold text-gray-600">Bath</span>
+            <input type="number" min="0" defaultValue={petConfig.bathCost||3} key={'pcfg_bath_'+(petConfig.bathCost||3)}
+              onBlur={function(e){onUpdatePetConfig('bathCost',parseInt(e.target.value)||0);}}
+              className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+            <span className="text-xs text-gray-400">pts</span>
+          </div>
         </div>
+        <p className="text-xs text-gray-400 mb-4 bg-amber-50 rounded-xl px-3 py-2">⚠️ <strong>Survival rules:</strong> Each species has daily hunger decay (fish 5/day → dragon 40/day). Hunger below 20% for 3 consecutive days = starvation death. No bath for 10 days = death too. Evolution requires species_cost × 20 growth points per stage.</p>
         <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-2.5 mt-2">🐾 Adoption Costs</h3>
         <div className="grid grid-cols-2 gap-2">
           {petCatalogue.map(function(pet){
@@ -1745,7 +1855,7 @@ function DesktopLayout(props) {
 function App() {
   var kidsState = useState([]);
   var kids = kidsState[0]; var setKids = kidsState[1];
-  var siState = useState({food:[],toys:[],accessories:[]});
+  var siState = useState({food:[],toys:[],accessories:[],home:[]});
   var shopItems = siState[0]; var setShopItems = siState[1];
   var pcState = useState({});
   var petCosts = pcState[0]; var setPetCosts = pcState[1];
@@ -1859,12 +1969,14 @@ function App() {
     if(!kidObj || !kidObj.pet) return;
     var sp=getSpecies(kidObj.pet.id);
     var isFood=shopItems.food.some(function(f){return f.id===item.id;});
+    var isHome=(shopItems.home||[]).some(function(h){return h.id===item.id;});
     var isPref=isFood&&(sp.preferredFood||[]).includes(item.id);
     var growthGain=isFood?(isPref?item.moodBoost:Math.ceil(item.moodBoost/2)):Math.ceil(item.moodBoost/5);
     var d=await callAPI('buy_item',{kidId:selId,itemId:item.id,cost:item.cost,moodBoost:item.moodBoost,growthGain:growthGain});
     if(d && d.error){ showToast(d.error||'Could not buy','error'); return; }
     applyState(d);
-    showToast(sp.name+' loved the '+item.name+'! '+item.emoji+(isPref?' 💫 Fave!':''));
+    if(isHome) showToast(sp.name+' moved into: '+item.name+'! '+item.emoji+' Rest speed '+item.speedBonus+'×!');
+    else showToast(sp.name+' loved the '+item.name+'! '+item.emoji+(isPref?' 💫 Fave!':''));
   }
 
   // Pat / play / rest — pet care actions (costs are parent-configurable)
@@ -1874,8 +1986,9 @@ function App() {
     if(d && d.error){ showToast(d.error,'error'); return false; }
     applyState(d);
     var spName=getSpecies(kidObj.pet.id).name;
-    if(type==='rest') showToast(spName+" is taking a nap! 💤 ("+petConfig.restMinutes+" min)");
+    if(type==='rest') showToast(spName+" is taking a nap! 💤");
     if(type==='play') showToast(spName+" had so much fun playing! ⚽");
+    if(type==='bath') showToast(spName+" had a bath! All squeaky clean! 🛁");
     return true;
   }
 
