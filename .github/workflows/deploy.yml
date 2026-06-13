@@ -1,0 +1,42 @@
+name: Deploy to NAS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Deploy files to NAS
+        env:
+          NAS_HOST: ${{ secrets.NAS_HOST }}
+          NAS_USER: ${{ secrets.NAS_USER }}
+          NAS_PASS: ${{ secrets.NAS_PASS }}
+        run: |
+          TARGET="/volume1/web/habit/"
+          
+          sshpass -p "$NAS_PASS" ssh -o StrictHostKeyChecking=no "$NAS_USER@$NAS_HOST" "mkdir -p $TARGET"
+          
+          for file in index.html api.php test.php site.webmanifest habit-logo-achieve.svg \
+                       habit-logo-achieve-32.png habit-logo-achieve-96.png habit-logo-achieve-192.png; do
+            if [ -f "$file" ]; then
+              sshpass -p "$NAS_PASS" scp -o StrictHostKeyChecking=no "$file" "$NAS_USER@$NAS_HOST:$TARGET$file"
+              echo "✅ Deployed: $file"
+            fi
+          done
+
+      - name: Verify
+        env:
+          NAS_HOST: ${{ secrets.NAS_HOST }}
+          NAS_USER: ${{ secrets.NAS_USER }}
+          NAS_PASS: ${{ secrets.NAS_PASS }}
+        run: |
+          sshpass -p "$NAS_PASS" ssh -o StrictHostKeyChecking=no "$NAS_USER@$NAS_HOST" \
+            "ls -la /volume1/web/habit/index.html" && echo "✅ OK"
