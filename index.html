@@ -522,6 +522,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
   var daysSinceBath=pet.daysSinceBath||0;
   var bathWarn=daysSinceBath>=7, bathDanger=daysSinceBath>=9;
   var hungerLowDays=pet.hungerLowDays||0;
+  var homeItemDef=pet.homeItem?((shopItems.home||[]).find(function(h){return h.id===pet.homeItem;})||null):null;
 
   var posState=useState(function(){return initPos!==undefined?initPos:10+Math.random()*70;});
   var pos=posState[0]; var setPos=posState[1];
@@ -684,6 +685,13 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
               })}
         </div>
         {isEgg&&<span className="font-bold text-purple-700/80 leading-none mb-0.5" style={{fontSize:10}}>{info.ptsToNext} pts to hatch!</span>}
+        {/* Home/bed indicator in the yard */}
+        {homeItemDef&&!isEgg&&(
+          <div className="bg-white/80 rounded-md px-1.5 py-0.5 mb-0.5 shadow" style={{fontSize:10,lineHeight:1.2}}>
+            <span>{homeItemDef.emoji}</span>
+            <span className="text-gray-500 ml-0.5">{homeItemDef.speedBonus}×</span>
+          </div>
+        )}
         {/* the pet itself */}
         <button onClick={doPat} title={sleeping?"Shh… sleeping!":isEgg?"Tap to cuddle the egg!":"Tap to pat me!"}
           style={{cursor:sleeping?'default':'pointer',touchAction:'manipulation',background:'none',border:'none',padding:0,lineHeight:1}}>
