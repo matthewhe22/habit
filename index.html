@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Habit Tracker</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="habit-logo-achieve-32.png">
+  <link rel="icon" type="image/svg+xml" href="habit-logo-achieve.svg">
+  <link rel="apple-touch-icon" sizes="96x96" href="habit-logo-achieve-96.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @keyframes taskFlash{0%,35%{background-color:#dcfce7;transform:scale(1.012)}100%{background-color:transparent;transform:scale(1)}}
+    .task-flash{animation:taskFlash .85s ease-out}
+    @keyframes petFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+    @keyframes petBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    @keyframes walkBob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-4px) rotate(2deg)}}
+    @keyframes nodAnim{0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg)}50%{transform:rotate(0)}75%{transform:rotate(12deg)}}
+    @keyframes jumpAnim{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-24px) scale(1.06)}60%{transform:translateY(0) scale(1.06,.92)}80%{transform:translateY(-6px)}}
+    @keyframes spinAnim{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    @keyframes eggWobble{0%,100%{transform:rotate(0)}15%{transform:rotate(-14deg)}35%{transform:rotate(12deg)}55%{transform:rotate(-9deg)}75%{transform:rotate(6deg)}}
+    @keyframes petLove{0%{transform:scale(1)}30%{transform:scale(1.3) rotate(-10deg)}60%{transform:scale(1.2) rotate(10deg)}100%{transform:scale(1)}}
+    @keyframes heartUp{0%{opacity:1;transform:translateY(0) scale(.5)}100%{opacity:0;transform:translateY(-52px) scale(1.4)}}
+    @keyframes hatchGlow{0%,100%{filter:drop-shadow(0 0 3px #fcd34d)}50%{filter:drop-shadow(0 0 12px #f59e0b)}}
+    @keyframes zzzFloat{0%{opacity:0;transform:translateY(0) scale(.7)}30%{opacity:1}100%{opacity:0;transform:translateY(-22px) scale(1.1)}}
+    @keyframes cloudDrift{0%{left:-18%}100%{left:108%}}
+    @keyframes blinkAnim{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+    @keyframes tailWag{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(14deg)}}
+    @keyframes wingFlap{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(10deg)}}
+    @keyframes earWiggle{0%,88%,100%{transform:rotate(0)}92%{transform:rotate(-8deg)}96%{transform:rotate(6deg)}}
+    @keyframes breatheAnim{0%,100%{transform:scale(1)}50%{transform:scale(1.04,.97)}}
+    @keyframes finWave{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(16deg)}}
+    .svgp{transform-box:fill-box;transform-origin:center}
+    .p-eye{animation:blinkAnim 4.2s ease-in-out infinite}
+    .p-tail{animation:tailWag 1.5s ease-in-out infinite;transform-origin:left center}
+    .p-wing{animation:wingFlap 1.1s ease-in-out infinite;transform-origin:right bottom}
+    .p-ear{animation:earWiggle 5s ease-in-out infinite;transform-origin:center bottom}
+    .p-fin{animation:finWave 1s ease-in-out infinite;transform-origin:right center}
+    .p-breathe{animation:breatheAnim 2.6s ease-in-out infinite;transform-origin:center bottom}
+    @keyframes stepKF{0%,100%{transform:translateY(0)}50%{transform:translateY(-3.5px)}}
+    .p-foot-a{animation:stepKF .34s linear infinite}
+    .p-foot-b{animation:stepKF .34s linear infinite;animation-delay:.17s}
+    .anim-walk{animation:walkBob .45s ease-in-out infinite}
+    .anim-idle{animation:petBounce 2.2s ease-in-out infinite}
+    .anim-nod{animation:nodAnim 1.2s ease-in-out}
+    .anim-jump{animation:jumpAnim .8s ease-in-out 2}
+    .anim-spin{animation:spinAnim .9s ease-in-out}
+    .anim-wobble{animation:eggWobble .9s ease-in-out}
+    .anim-pet{animation:petLove .8s ease-in-out}
+
+    /* ── Kid-friendly theme ──────────────────────────────────────────── */
+    body{font-family:'Baloo 2','Nunito','Comic Sans MS','Segoe UI',system-ui,sans-serif}
+    button{touch-action:manipulation}
+    .kid-tab-btn .tab-ico{font-size:1.15rem;line-height:1;display:inline-block;margin-right:.3rem;vertical-align:-2px}
+
+    /* ══ Mobile layout — redesigned kid-friendly phone experience (≤768px) ══ */
+    @media (max-width:768px){
+      html{font-size:19px}
+      body{padding:10px 10px 0}
+      .app-root{padding-bottom:104px} /* room for the fixed bottom nav */
+      input,select{font-size:16px!important;min-height:52px} /* no iOS zoom, easy taps */
+      .tap-btn{min-height:56px!important;font-size:1.05rem!important;border-radius:16px!important}
+      .icon-btn{min-width:48px;min-height:48px;display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem}
+      .chk-btn{width:44px!important;height:44px!important;border-radius:14px!important;font-size:1.15rem!important}
+      .yard-btn{font-size:1.05rem!important;min-width:42px;min-height:42px;padding:6px 10px!important}
+      /* taller play area + bigger feed popover */
+      .pet-yard{height:230px!important;border-radius:22px!important}
+      .feed-pop{width:13.5rem!important;padding:10px!important}
+      .feed-pop button{min-height:46px!important;font-size:.9rem!important;border-radius:12px!important}
+      .feed-pop .text-xs{font-size:.85rem!important}
+
+      /* ── Header: compact, Parents button shrinks to a corner pill ── */
+      .app-header{margin-bottom:14px}
+      .app-title{font-size:1.35rem!important;line-height:1.1}
+      .app-subtitle{display:none} /* save vertical space on phones */
+      .parents-btn{font-size:.8rem!important;padding:10px 14px!important;min-height:48px!important}
+
+      /* ── Kid selector: big friendly cards, 2 across ── */
+      .kid-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+      .kid-card{padding:16px!important;border-radius:22px!important;border-width:3px!important}
+      .kid-card-active{box-shadow:0 6px 18px rgba(79,70,229,.16)}
+      .kid-card-emoji{font-size:2.2rem!important}
+      .kid-card-name{font-size:1.15rem!important}
+      .kid-card .text-xs{font-size:.85rem!important}
+
+      /* ── Identity banner: warm, glanceable ── */
+      .identity-banner{padding:16px 18px!important;border-radius:22px!important}
+      .ib-emoji{font-size:2.6rem!important}
+      .ib-name{font-size:1.3rem!important}
+      .ib-hint{font-size:.9rem!important}
+      .ib-pts-label{font-size:.78rem!important}
+      .ib-pts{font-size:2.4rem!important;line-height:1}
+
+      /* ── Stats strip: very large glanceable counters ── */
+      .stats-strip{gap:12px!important;margin-bottom:18px!important}
+      .stat-box{padding:16px 10px!important;border-radius:20px!important}
+      .stat-label{font-size:.78rem!important}
+      .stat-num{font-size:2.8rem!important;line-height:1.05}
+      .stat-unit{font-size:.8rem!important}
+
+      /* ── Tasks: the star screen — big full-width tappable rows ── */
+      .task-cat-head{font-size:.9rem!important;letter-spacing:.12em!important;margin-bottom:12px!important}
+      .task-row{padding:14px 16px!important;border-radius:20px!important;border-width:2px!important;gap:12px!important;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+      .task-row-done{opacity:.7}
+      .task-title{font-size:1.15rem!important;line-height:1.25!important}
+      .task-pts{font-size:1.2rem!important;min-width:2.4rem;text-align:center}
+      .task-btn{min-width:92px!important;min-height:56px!important;font-size:1rem!important;border-radius:16px!important;padding:0 14px!important}
+      .task-btn-do{box-shadow:0 4px 0 rgba(0,0,0,.12)}
+      .task-btn-do:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.12)}
+
+      /* ── Pet care: big buttons ── */
+      .pet-actions{gap:10px!important}
+      .pet-act-btn{min-height:56px!important;font-size:1rem!important;border-radius:16px!important}
+      .pet-shop-btn{min-height:58px!important;font-size:1.15rem!important;border-radius:18px!important}
+
+      /* ── Shop: roomy rows, big buy buttons ── */
+      .shop-row{padding:14px 16px!important;border-radius:18px!important}
+      .shop-emoji{font-size:1.8rem!important}
+      .shop-name{font-size:1.05rem!important}
+      .shop-buy{min-width:90px!important;min-height:56px!important;font-size:1rem!important;border-radius:16px!important}
+
+      /* ── Adopt: 2-column big cards, big buttons ── */
+      .adopt-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+      .adopt-card{padding:16px 12px!important;border-radius:22px!important}
+      .adopt-name{font-size:1.05rem!important}
+      .adopt-final{font-size:.82rem!important}
+      .adopt-cost{font-size:1rem!important}
+      .adopt-btn{min-height:54px!important;font-size:.95rem!important;border-radius:16px!important;padding:0 8px!important}
+
+      /* ── Big thumbable bottom navigation ── */
+      .kid-tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid #e5e7eb;box-shadow:0 -6px 22px rgba(79,70,229,.20);padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:10px;display:flex}
+      .kid-tab-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:64px;border-radius:18px!important;border-bottom-width:0!important;font-size:.82rem!important;line-height:1.15}
+      .kid-tab-btn .tab-ico{font-size:1.7rem;margin-right:0;vertical-align:baseline}
+      .kid-tab-active{background:#eef2ff!important;color:#4338ca!important;box-shadow:inset 0 0 0 2px #c7d2fe;transform:scale(1.03)}
+
+      /* ── Modals become full-width bottom sheets with big internals ── */
+      .app-modal{padding:0!important;align-items:flex-end!important}
+      .app-modal>div{max-width:100%!important;max-height:94vh!important;border-radius:26px 26px 0 0!important}
+
+      /* ── Toast ── */
+      .app-toast{width:calc(100% - 28px);max-width:430px;text-align:center;font-size:1.1rem!important;padding:.9rem 1.2rem!important;border-radius:20px!important}
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-sky-100 via-violet-50 to-pink-100 min-h-screen p-3">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const PET_SPECIES = [
+  { id:"dragon",  name:"Dragon",  emoji:"🐉", cost:60, rare:true, preferredFood:["treat","meal"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#f3f4f6"},{name:"Hatchling",threshold:12,art:"🐉",bg:"#dcfce7",glow:"0 0 20px #86efac"},{name:"Dragon",threshold:60,art:"🐉",bg:"#fee2e2",glow:"0 0 25px #f87171"},{name:"Mighty Dragon",threshold:150,art:"🐲",bg:"#fee2e2",glow:"0 0 30px #f87171"}]},
+  { id:"unicorn", name:"Unicorn", emoji:"🦄", cost:50, rare:true, preferredFood:["treat"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fdf4ff"},{name:"Foal",threshold:10,art:"🦄",bg:"#fdf4ff",glow:"0 0 15px #f9a8d4"},{name:"Filly",threshold:50,art:"🦄",bg:"#fce7f3",glow:"0 0 20px #f9a8d4"},{name:"Unicorn",threshold:110,art:"🦄",bg:"#ede9fe",glow:"0 0 30px #c4b5fd"}]},
+  { id:"kitten",  name:"Kitten",  emoji:"🐱", cost:20, preferredFood:["meal","snack"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fffbeb"},{name:"Kitten",threshold:8,art:"🐱",bg:"#fffbeb"},{name:"Cat",threshold:25,art:"🐱",bg:"#fef3c7",glow:"0 0 15px #fcd34d"},{name:"Elder",threshold:70,art:"🐈",bg:"#fde68a",glow:"0 0 25px #f59e0b"}]},
+  { id:"doggy",   name:"Doggy",   emoji:"🐶", cost:20, preferredFood:["snack","meal"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fefce8"},{name:"Puppy",threshold:8,art:"🐶",bg:"#fefce8"},{name:"Dog",threshold:25,art:"🐶",bg:"#fef9c3",glow:"0 0 15px #fde047"},{name:"Adult",threshold:70,art:"🐕",bg:"#fef08a",glow:"0 0 25px #eab308"}]},
+  { id:"fish",    name:"Fish",    emoji:"🐟", cost:10, preferredFood:["snack"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#eff6ff"},{name:"Fry",threshold:5,art:"🐟",bg:"#eff6ff"},{name:"Fish",threshold:15,art:"🐟",bg:"#dbeafe",glow:"0 0 15px #93c5fd"},{name:"Adult",threshold:40,art:"🐠",bg:"#bfdbfe",glow:"0 0 20px #60a5fa"}]},
+  { id:"turtle",  name:"Turtle",  emoji:"🐢", cost:15, preferredFood:["snack","treat"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#f0fdf4"},{name:"Hatchling",threshold:6,art:"🐢",bg:"#f0fdf4"},{name:"Turtle",threshold:20,art:"🐢",bg:"#dcfce7",glow:"0 0 15px #86efac"},{name:"Elder",threshold:55,art:"🐢",bg:"#bbf7d0",glow:"0 0 20px #4ade80"}]},
+  { id:"bunny",   name:"Bunny",   emoji:"🐰", cost:20, preferredFood:["snack","treat"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fff1f2"},{name:"Kit",threshold:8,art:"🐰",bg:"#fff1f2"},{name:"Bunny",threshold:25,art:"🐰",bg:"#ffe4e6",glow:"0 0 15px #fda4af"},{name:"Adult",threshold:70,art:"🐇",bg:"#fecdd3",glow:"0 0 20px #fb7185"}]},
+  { id:"hamster", name:"Hamster", emoji:"🐹", cost:15, preferredFood:["snack"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#fff7ed"},{name:"Pup",threshold:6,art:"🐹",bg:"#fff7ed"},{name:"Hamster",threshold:20,art:"🐹",bg:"#ffedd5",glow:"0 0 15px #fdba74"},{name:"Adult",threshold:55,art:"🐹",bg:"#fed7aa",glow:"0 0 20px #fb923c"}]},
+  { id:"parrot",  name:"Parrot",  emoji:"🦜", cost:25, preferredFood:["snack","treat"],
+    stages:[{name:"Egg",threshold:0,art:"🥚",bg:"#f0fdf4"},{name:"Chick",threshold:8,art:"🐣",bg:"#f0fdf4"},{name:"Parrot",threshold:30,art:"🦜",bg:"#dcfce7",glow:"0 0 15px #86efac"},{name:"Adult",threshold:80,art:"🦜",bg:"#bbf7d0",glow:"0 0 20px #22c55e"}]},
+];
+
+const C = {
+  blue:   {border:"border-blue-500",  bg:"bg-blue-50",   txt:"text-blue-600",  btn:"bg-blue-500 hover:bg-blue-600",   prog:"bg-blue-400",  ring:"ring-blue-400"},
+  pink:   {border:"border-pink-500",  bg:"bg-pink-50",   txt:"text-pink-600",  btn:"bg-pink-500 hover:bg-pink-600",   prog:"bg-pink-400",  ring:"ring-pink-400"},
+  green:  {border:"border-green-500", bg:"bg-green-50",  txt:"text-green-600", btn:"bg-green-500 hover:bg-green-600", prog:"bg-green-400", ring:"ring-green-400"},
+  purple: {border:"border-purple-500",bg:"bg-purple-50", txt:"text-purple-600",btn:"bg-purple-500 hover:bg-purple-600",prog:"bg-purple-400",ring:"ring-purple-400"},
+  orange: {border:"border-orange-500",bg:"bg-orange-50", txt:"text-orange-600",btn:"bg-orange-500 hover:bg-orange-600",prog:"bg-orange-400",ring:"ring-orange-400"},
+  teal:   {border:"border-teal-500",  bg:"bg-teal-50",   txt:"text-teal-600",  btn:"bg-teal-500 hover:bg-teal-600",   prog:"bg-teal-400",  ring:"ring-teal-400"},
+};
+const COLOR_OPTS = Object.keys(C);
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const moodLabel = function(m) { return m>=80?{text:"Thriving! 🌟",cls:"text-green-500"}:m>=50?{text:"Happy 😊",cls:"text-yellow-500"}:m>=25?{text:"Sad 😢",cls:"text-orange-400"}:{text:"Needs care! 😫",cls:"text-red-500"}; };
+const petFace = function(pet) {
+  if(pet.sleeping) return 'sleep';
+  if((pet.hunger!==undefined?pet.hunger:80)<30) return 'sad';
+  if((pet.fatigue!==undefined?pet.fatigue:20)>75) return 'tired';
+  if((pet.joy!==undefined?pet.joy:80)<30) return 'sad';
+  return 'happy';
+};
+const maxDailyPts = function(kid) { return [...(kid.tasks.basic||[]),...(kid.tasks.bonus||[])].reduce(function(s,t){return s+(t.points>0?t.points:0);},0); };
+const getSpecies  = function(id) { return PET_SPECIES.find(function(s){return s.id===id;})||PET_SPECIES[2]; };
+
+function getStageInfo(species, growthPts) {
+  var stages=species.stages; var idx=0;
+  for(var i=stages.length-1;i>=0;i--) if(growthPts>=stages[i].threshold){idx=i;break;}
+  var stage=stages[idx], next=stages[idx+1]||null;
+  var pct=100,toNext=0;
+  if(next){var span=next.threshold-stage.threshold,done=growthPts-stage.threshold;pct=Math.min(100,Math.round(done/span*100));toNext=next.threshold-growthPts;}
+  return{stageIdx:idx,stage:stage,nextStage:next,progressPct:pct,ptsToNext:toNext};
+}
+
+async function callAPI(action, body) {
+  body = body || null;
+  try {
+    var opts = body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {};
+    var r = await fetch('/api.php?action='+action, opts);
+    return await r.json();
+  } catch(e) { return {error:e.message}; }
+}
+
+// ── 3D-shaded SVG pet characters ───────────────────────────────────────────────
+const SPECIES_ART = {
+  dragon: {body:"#4ade80", dark:"#16a34a", light:"#bbf7d0", belly:"#ecfccb", cheek:"#86efac"},
+  unicorn:{body:"#fce7f3", dark:"#f472b6", light:"#ffffff", belly:"#ffffff", cheek:"#f9a8d4"},
+  kitten: {body:"#fdba74", dark:"#ea580c", light:"#fed7aa", belly:"#fff7ed", cheek:"#fb7185"},
+  doggy:  {body:"#d2a679", dark:"#92633a", light:"#e8c9a0", belly:"#f5e6d3", cheek:"#f9a8d4"},
+  fish:   {body:"#60a5fa", dark:"#2563eb", light:"#bfdbfe", belly:"#dbeafe", cheek:"#93c5fd"},
+  turtle: {body:"#86efac", dark:"#15803d", light:"#bbf7d0", belly:"#d9f99d", cheek:"#4ade80", shell:"#65a30d", shellDark:"#3f6212", shellLight:"#a3e635"},
+  bunny:  {body:"#ffffff", dark:"#d1d5db", light:"#ffffff", belly:"#fce7f3", cheek:"#f9a8d4"},
+  hamster:{body:"#fcd34d", dark:"#d97706", light:"#fde68a", belly:"#fef3c7", cheek:"#fb923c"},
+  parrot: {body:"#ef4444", dark:"#b91c1c", light:"#fca5a5", belly:"#fde047", cheek:"#f87171"},
+};
+
+function EggSVG({speciesId, size, progress}) {
+  var A=SPECIES_ART[speciesId]||SPECIES_ART.kitten;
+  var gid='ge_'+speciesId;
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <radialGradient id={gid} cx="38%" cy="28%" r="80%">
+          <stop offset="0%" stopColor="#ffffff"/><stop offset="65%" stopColor="#fdf6ec"/><stop offset="100%" stopColor="#e2cfb6"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="50" cy="92" rx="17" ry="4" fill="rgba(0,0,0,.15)"/>
+      <path d="M50 10 C33 10 25 38 25 58 C25 77 36 90 50 90 C64 90 75 77 75 58 C75 38 67 10 50 10 Z" fill={'url(#'+gid+')'} stroke="#d6c4ad" strokeWidth="1"/>
+      <ellipse cx="42" cy="42" rx="5" ry="7" fill={A.body} opacity=".55"/>
+      <ellipse cx="60" cy="58" rx="6" ry="8" fill={A.body} opacity=".45"/>
+      <ellipse cx="46" cy="72" rx="4" ry="5" fill={A.body} opacity=".5"/>
+      <ellipse cx="41" cy="26" rx="6" ry="9" fill="#fff" opacity=".55" transform="rotate(-18 41 26)"/>
+      {progress>=50&&<path d="M38 48 L45 53 L41 59 L49 63" stroke="#a16207" strokeWidth="1.6" fill="none" strokeLinecap="round"/>}
+      {progress>=80&&<path d="M62 38 L56 44 L63 49" stroke="#a16207" strokeWidth="1.6" fill="none" strokeLinecap="round"/>}
+    </svg>
+  );
+}
+
+// face: 'happy' | 'big' | 'sad' | 'tired' | 'sleep'
+function PetSVG({speciesId, size, face, walking}) {
+  size=size||48; face=face||'happy';
+  var A=SPECIES_ART[speciesId]||SPECIES_ART.kitten;
+  var gid='g_'+speciesId;
+
+  function Eye(p){
+    if(face==='sleep') return <path d={"M"+(p.x-4)+" "+p.y+" Q"+p.x+" "+(p.y+3.5)+" "+(p.x+4)+" "+p.y} stroke="#1f2937" strokeWidth="1.8" fill="none" strokeLinecap="round"/>;
+    if(face==='tired') return <g><circle cx={p.x} cy={p.y+0.5} r="2.6" fill="#1f2937"/><path d={"M"+(p.x-3.5)+" "+(p.y-2.5)+" L"+(p.x+3.5)+" "+(p.y-2.5)} stroke="#1f2937" strokeWidth="1.6" strokeLinecap="round"/></g>;
+    return <g className="p-eye svgp"><circle cx={p.x} cy={p.y} r="3.4" fill="#1f2937"/><circle cx={p.x+1.1} cy={p.y-1.1} r="1.1" fill="#fff"/></g>;
+  }
+  function Mouth(){
+    if(face==='big')   return <g><path d="M44 44 Q50 53 56 44 Z" fill="#9a3412"/><ellipse cx="50" cy="48" rx="2.6" ry="1.6" fill="#fda4af"/></g>;
+    if(face==='sad')   return <path d="M45 49.5 Q50 45 55 49.5" stroke="#7c2d12" strokeWidth="1.8" fill="none" strokeLinecap="round"/>;
+    if(face==='sleep') return <circle cx="50" cy="47.5" r="1.6" fill="#7c2d12"/>;
+    if(face==='tired') return <path d="M46 47.5 L54 47.5" stroke="#7c2d12" strokeWidth="1.8" strokeLinecap="round"/>;
+    return <path d="M44.5 45.5 Q50 50.5 55.5 45.5" stroke="#7c2d12" strokeWidth="1.8" fill="none" strokeLinecap="round"/>;
+  }
+
+  // Fish: side-view swimmer, no legs
+  if(speciesId==='fish') return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <radialGradient id={gid+'b'} cx="40%" cy="32%" r="75%">
+          <stop offset="0%" stopColor={A.light}/><stop offset="70%" stopColor={A.body}/><stop offset="100%" stopColor={A.dark}/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="54" cy="90" rx="20" ry="4" fill="rgba(0,0,0,.12)"/>
+      <g className="p-fin svgp"><path d="M32 55 L12 40 Q17 55 12 70 Z" fill={A.dark}/></g>
+      <ellipse cx="56" cy="55" rx="25" ry="17" fill={'url(#'+gid+'b)'}/>
+      <path d="M48 39 Q56 27 66 39 Z" fill={A.dark}/>
+      <g className="p-fin svgp" style={{animationDelay:'.3s'}}><ellipse cx="52" cy="62" rx="7" ry="4.5" fill={A.dark} transform="rotate(25 52 62)"/></g>
+      <ellipse cx="66" cy="59" rx="3" ry="2" fill={A.cheek} opacity=".8"/>
+      <Eye x={68} y={50}/>
+      {face==='big'
+        ? <circle cx="77" cy="57" r="2.6" fill="#9a3412"/>
+        : face==='sad'
+          ? <path d="M74 59 Q77 56.5 80 59" stroke="#1e3a8a" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+          : <path d="M74 57 Q77 59.5 80 57" stroke="#1e3a8a" strokeWidth="1.6" fill="none" strokeLinecap="round"/>}
+      <circle cx="86" cy="36" r="2.5" fill="#bfdbfe" opacity=".8"/>
+      <circle cx="90" cy="28" r="1.7" fill="#bfdbfe" opacity=".6"/>
+    </svg>
+  );
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <radialGradient id={gid+'b'} cx="38%" cy="30%" r="78%">
+          <stop offset="0%" stopColor={A.light}/><stop offset="70%" stopColor={A.body}/><stop offset="100%" stopColor={A.dark}/>
+        </radialGradient>
+        <radialGradient id={gid+'h'} cx="40%" cy="32%" r="80%">
+          <stop offset="0%" stopColor={A.light}/><stop offset="75%" stopColor={A.body}/><stop offset="100%" stopColor={A.dark}/>
+        </radialGradient>
+        {speciesId==='turtle'&&<radialGradient id={gid+'s'} cx="40%" cy="28%" r="80%">
+          <stop offset="0%" stopColor={A.shellLight}/><stop offset="70%" stopColor={A.shell}/><stop offset="100%" stopColor={A.shellDark}/>
+        </radialGradient>}
+      </defs>
+      <ellipse cx="50" cy="93" rx="21" ry="4" fill="rgba(0,0,0,.15)"/>
+
+      {/* behind-parts: wings, tails, ears */}
+      {speciesId==='dragon'&&<g>
+        <g className="p-wing svgp"><path d="M28 62 Q9 48 15 31 Q31 42 36 56 Z" fill={A.dark} opacity=".95"/></g>
+        <g className="p-wing svgp" style={{animationDelay:'.55s'}}><path d="M72 62 Q91 48 85 31 Q69 42 64 56 Z" fill={A.dark} opacity=".95"/></g>
+        <g className="p-tail svgp"><path d="M70 76 Q88 72 91 59" stroke={A.body} strokeWidth="7" fill="none" strokeLinecap="round"/><path d="M86 62 L98 52 L95 66 Z" fill={A.dark}/></g>
+        <polygon points="41,21 45,7 50,19" fill="#fef3c7"/><polygon points="59,21 55,7 50,19" fill="#fef3c7"/>
+      </g>}
+      {speciesId==='unicorn'&&<g>
+        <polygon points="46,17 50,1 54,17" fill="#fbbf24"/>
+        <path d="M47.2 12 L52.8 12 M48.2 8 L52 8" stroke="#d97706" strokeWidth="1.4"/>
+        <ellipse cx="36" cy="20" rx="6" ry="5" fill={A.cheek}/><ellipse cx="31" cy="28" rx="5" ry="4.5" fill="#e9d5ff"/><ellipse cx="34" cy="36" rx="4.5" ry="4" fill={A.cheek}/>
+        <g className="p-tail svgp"><path d="M71 74 Q86 70 88 58" stroke="#e9d5ff" strokeWidth="6" fill="none" strokeLinecap="round"/><path d="M84 64 Q90 60 89 54" stroke={A.cheek} strokeWidth="4" fill="none" strokeLinecap="round"/></g>
+      </g>}
+      {speciesId==='kitten'&&<g>
+        <polygon points="32,26 36,8 46,20" fill={A.body}/><polygon points="36,22 38,12 43,19" fill={A.cheek}/>
+        <polygon points="68,26 64,8 54,20" fill={A.body}/><polygon points="64,22 62,12 57,19" fill={A.cheek}/>
+        <g className="p-tail svgp"><path d="M70 78 Q90 74 88 60 Q87 53 81 54" stroke={A.body} strokeWidth="6" fill="none" strokeLinecap="round"/></g>
+      </g>}
+      {speciesId==='doggy'&&<g>
+        <g className="p-ear svgp"><ellipse cx="31" cy="29" rx="7" ry="13" fill={A.dark} transform="rotate(14 31 29)"/></g>
+        <g className="p-ear svgp" style={{animationDelay:'1.2s'}}><ellipse cx="69" cy="29" rx="7" ry="13" fill={A.dark} transform="rotate(-14 69 29)"/></g>
+        <g className="p-tail svgp"><path d="M71 76 Q88 72 90 60" stroke={A.dark} strokeWidth="6.5" fill="none" strokeLinecap="round"/></g>
+      </g>}
+      {speciesId==='bunny'&&<g>
+        <g className="p-ear svgp"><ellipse cx="42" cy="13" rx="6" ry="16" fill={A.body} stroke={A.dark} strokeWidth=".8"/><ellipse cx="42" cy="14" rx="3" ry="11" fill={A.cheek}/></g>
+        <g className="p-ear svgp" style={{animationDelay:'.8s'}}><ellipse cx="58" cy="13" rx="6" ry="16" fill={A.body} stroke={A.dark} strokeWidth=".8"/><ellipse cx="58" cy="14" rx="3" ry="11" fill={A.cheek}/></g>
+        <circle cx="26" cy="74" r="6" fill="#f9fafb" stroke={A.dark} strokeWidth=".8"/>
+      </g>}
+      {speciesId==='hamster'&&<g>
+        <circle cx="37" cy="19" r="6.5" fill={A.body} stroke={A.dark} strokeWidth=".8"/><circle cx="37" cy="19" r="3" fill={A.cheek}/>
+        <circle cx="63" cy="19" r="6.5" fill={A.body} stroke={A.dark} strokeWidth=".8"/><circle cx="63" cy="19" r="3" fill={A.cheek}/>
+      </g>}
+      {speciesId==='parrot'&&<g>
+        <ellipse cx="43" cy="11" rx="3" ry="7" fill="#facc15" transform="rotate(-22 43 11)"/>
+        <ellipse cx="50" cy="9" rx="3" ry="8" fill="#22c55e"/>
+        <ellipse cx="57" cy="11" rx="3" ry="7" fill="#3b82f6" transform="rotate(22 57 11)"/>
+      </g>}
+
+      {/* body & belly */}
+      <g className="p-breathe svgp">
+        <ellipse cx="50" cy="66" rx="24" ry="20" fill={'url(#'+gid+'b)'}/>
+        {speciesId!=='turtle'&&<ellipse cx="50" cy="71" rx="14" ry="11" fill={A.belly}/>}
+        {speciesId==='turtle'&&<g>
+          <ellipse cx="50" cy="68" rx="23" ry="17" fill={'url(#'+gid+'s)'}/>
+          <ellipse cx="50" cy="64" rx="8" ry="6" fill={A.shellLight} opacity=".7"/>
+          <ellipse cx="36" cy="70" rx="5" ry="4" fill={A.shellLight} opacity=".5"/>
+          <ellipse cx="64" cy="70" rx="5" ry="4" fill={A.shellLight} opacity=".5"/>
+        </g>}
+        {speciesId==='parrot'&&<ellipse cx="50" cy="71" rx="13" ry="10" fill="#fde047"/>}
+        {speciesId==='dragon'&&<g><path d="M44 58 L56 58 M43 65 L57 65 M44 72 L56 72" stroke="#bef264" strokeWidth="2.5" strokeLinecap="round" opacity=".7"/></g>}
+        {speciesId==='parrot'&&<g>
+          <g className="p-wing svgp"><ellipse cx="29" cy="66" rx="7" ry="13" fill="#16a34a"/></g>
+          <g className="p-wing svgp" style={{animationDelay:'.5s'}}><ellipse cx="71" cy="66" rx="7" ry="13" fill="#2563eb"/></g>
+        </g>}
+      </g>
+
+      {/* feet */}
+      <g className={walking?"p-foot-a svgp":""}><ellipse cx="39" cy="87" rx="6.5" ry="4" fill={A.dark}/></g>
+      <g className={walking?"p-foot-b svgp":""}><ellipse cx="61" cy="87" rx="6.5" ry="4" fill={A.dark}/></g>
+
+      {/* head */}
+      <circle cx="50" cy="36" r="20" fill={'url(#'+gid+'h)'}/>
+      {speciesId==='doggy'&&<g><ellipse cx="50" cy="45" rx="8.5" ry="6.5" fill={A.light}/><ellipse cx="50" cy="41.5" rx="3" ry="2.4" fill="#1f2937"/></g>}
+      {speciesId==='kitten'&&<g stroke="#9ca3af" strokeWidth="1" strokeLinecap="round">
+        <path d="M28 39 L39 40.5"/><path d="M28 44 L39 43"/><path d="M72 39 L61 40.5"/><path d="M72 44 L61 43"/>
+        <polygon points="47.5,41.5 52.5,41.5 50,44.5" fill="#fb7185"/>
+      </g>}
+      {speciesId==='bunny'&&<polygon points="47.5,41 52.5,41 50,44" fill="#f9a8d4"/>}
+      {speciesId==='hamster'&&<g><circle cx="37" cy="44" r="6" fill={A.light}/><circle cx="63" cy="44" r="6" fill={A.light}/><polygon points="48,41 52,41 50,43.5" fill="#92400e"/></g>}
+
+      {/* face */}
+      <ellipse cx="36.5" cy="42.5" rx="3.5" ry="2.4" fill={A.cheek} opacity=".85"/>
+      <ellipse cx="63.5" cy="42.5" rx="3.5" ry="2.4" fill={A.cheek} opacity=".85"/>
+      <Eye x={43} y={34}/><Eye x={57} y={34}/>
+      {speciesId==='parrot'
+        ? <path d="M45 40 Q50 36 55 40 Q50 50 45 40 Z" fill="#f59e0b" stroke="#d97706" strokeWidth=".8"/>
+        : <Mouth/>}
+    </svg>
+  );
+}
+
+// ── Pet Art ────────────────────────────────────────────────────────────────────
+function PetArt({pet, size}) {
+  size = size || "md";
+  var sp=getSpecies(pet.id),info=getStageInfo(sp,pet.growthPoints||0);
+  var stage=info.stage,stageIdx=info.stageIdx;
+  var isAdult=stageIdx===sp.stages.length-1, isRare=sp.rare, isEgg=stageIdx===0;
+  var nearHatch=isEgg&&info.progressPct>=60;
+  var cs=size==="lg"?110:size==="sm"?60:80;
+  return (
+    <div style={{position:"relative",width:cs,height:cs}}>
+      <div style={{position:"absolute",inset:0,borderRadius:"50%",background:"radial-gradient(circle at 40% 40%,"+stage.bg+","+(isRare?"#e9d5ff":"#f9fafb")+")",boxShadow:stage.glow||(isAdult?"0 4px 20px rgba(0,0,0,.1)":"none")}}/>
+      {stageIdx>0&&<div style={{position:"absolute",top:-4,right:-4,fontSize:16,lineHeight:1,background:"white",borderRadius:"50%",padding:2,boxShadow:"0 1px 4px rgba(0,0,0,.15)",zIndex:2}}>{isAdult?"👑":"✨"}</div>}
+      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:isEgg?"eggWobble 2.4s ease-in-out infinite":isAdult?"petFloat 3s ease-in-out infinite":"petBounce 2s ease-in-out infinite"}}>
+        <span style={nearHatch?{animation:"hatchGlow 1.4s ease-in-out infinite"}:undefined}>
+          {isEgg
+            ? <EggSVG speciesId={pet.id} size={cs*0.78} progress={info.progressPct}/>
+            : <PetSVG speciesId={pet.id} size={cs*0.85} face={petFace(pet)}/>}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Live Pet (animated, interactive — lives in the Pet Yard) ───────────────────
+function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
+  var pet=kid.pet, sp=getSpecies(pet.id), info=getStageInfo(sp,pet.growthPoints||0);
+  var isEgg=info.stageIdx===0;
+  var isAdult=info.stageIdx===sp.stages.length-1;
+  var fs=isEgg?34:info.stageIdx===1?40:info.stageIdx===2?50:60;
+  var sleeping=!!pet.sleeping;
+  var hungry=pet.hunger<30, tired=pet.fatigue>75, sluggish=pet.fatigue>55||pet.hunger<40;
+
+  var posState=useState(function(){return initPos!==undefined?initPos:10+Math.random()*70;});
+  var pos=posState[0]; var setPos=posState[1];
+  var posRef=useRef(pos); posRef.current=pos;
+  var dirState=useState(1);
+  var dir=dirState[0]; var setDir=dirState[1];
+  var durState=useState(0);
+  var dur=durState[0]; var setDur=durState[1];
+  var actState=useState('idle');
+  var act=actState[0]; var setAct=actState[1];
+  var heartsState=useState([]);
+  var hearts=heartsState[0]; var setHearts=heartsState[1];
+  var feedState=useState(false);
+  var showFeed=feedState[0]; var setShowFeed=feedState[1];
+  var actRef=useRef(act); actRef.current=act;
+
+  // Re-render every 20s while napping so the countdown stays fresh
+  var tickState=useState(0);
+  var setTick=tickState[1];
+  useEffect(function(){
+    if(!sleeping) return;
+    var t=setInterval(function(){ setTick(function(n){return n+1;}); },20000);
+    return function(){clearInterval(t);};
+  },[sleeping]);
+
+  // Autonomous behaviour loop: wander, nod, jump, spin, rest (eggs wobble, sleepers lie still)
+  useEffect(function(){
+    if(sleeping){ setAct('sleep'); return; }
+    setAct('idle');
+    var alive=true, t=null, t2=null;
+    function next(delay){ t=setTimeout(tick, delay); }
+    function tick(){
+      if(!alive) return;
+      if(actRef.current==='pet'){ next(900); return; }
+      if(isEgg){
+        setAct('wobble');
+        t2=setTimeout(function(){ if(alive&&actRef.current==='wobble') setAct('idle'); },950);
+        next(2000+Math.random()*2800);
+        return;
+      }
+      var r=Math.random();
+      // tired or hungry pets mope around more; joyful pets show off more
+      var walkP=sluggish?0.3:0.45, jumpP=pet.joy>=70?0.2:0.1;
+      if(r<walkP){
+        var target=8+Math.random()*76;
+        var dist=Math.abs(target-posRef.current);
+        var walkDur=Math.max(1.2,dist/(sluggish?8:13));
+        setDir(target>posRef.current?1:-1);
+        setDur(walkDur); setAct('walk'); setPos(target);
+        t2=setTimeout(function(){ if(alive&&actRef.current==='walk') setAct('idle'); },walkDur*1000);
+        next(walkDur*1000+500+Math.random()*1200);
+      }
+      else if(r<walkP+0.15){ setAct('nod');  t2=setTimeout(function(){if(alive&&actRef.current==='nod')setAct('idle');},1250);  next(1800+Math.random()*1500); }
+      else if(r<walkP+0.15+jumpP&&!tired){ setAct('jump'); t2=setTimeout(function(){if(alive&&actRef.current==='jump')setAct('idle');},1650); next(2100+Math.random()*1500); }
+      else if(r<walkP+0.2+jumpP&&!tired){ setAct('spin'); t2=setTimeout(function(){if(alive&&actRef.current==='spin')setAct('idle');},950);  next(1800+Math.random()*1500); }
+      else { setAct('idle'); next(1600+Math.random()*2200); }
+    }
+    next(400+Math.random()*1500);
+    return function(){ alive=false; clearTimeout(t); clearTimeout(t2); };
+  },[isEgg,sleeping,sluggish,tired,pet.joy]);
+
+  function spawnBurst(arts){
+    var items=[]; var n=2+Math.floor(Math.random()*2);
+    for(var i=0;i<n;i++) items.push({id:Date.now()+'_'+i, dx:Math.round(Math.random()*40-20), d:0.7+Math.random()*0.5, art:arts[Math.floor(Math.random()*arts.length)]});
+    setHearts(function(p){return p.concat(items);});
+    setTimeout(function(){ setHearts(function(p){return p.filter(function(h){return items.indexOf(h)===-1;});}); },1350);
+  }
+
+  async function doPat(){
+    if(sleeping) return;
+    setAct('pet');
+    setTimeout(function(){ if(actRef.current==='pet') setAct('idle'); },850);
+    var ok=await onAction(kid,'pat');
+    if(ok) spawnBurst(isEgg?["✨","💛","✨"]:["❤️","💖","💕","✨"]);
+  }
+  async function doPlay(){
+    if(sleeping) return;
+    var ok=await onAction(kid,'play');
+    if(ok){
+      setAct('jump');
+      setTimeout(function(){ if(actRef.current==='jump') setAct('idle'); },1650);
+      spawnBurst(["⚽","🎉","✨","🎾"]);
+    }
+  }
+  async function doRest(){
+    if(sleeping) return;
+    await onAction(kid,'rest');
+  }
+  async function doFeed(item){
+    setShowFeed(false);
+    var ok=await onFeed(kid,item);
+    if(ok) spawnBurst([item.emoji,"✨","😋"]);
+  }
+
+  var animCls = act==='sleep'?'':act==='walk'?'anim-walk':act==='nod'?'anim-nod':act==='jump'?'anim-jump':act==='spin'?'anim-spin':act==='wobble'?'anim-wobble':act==='pet'?'anim-pet':'anim-idle';
+  var nearEdgeL=pos<22, nearEdgeR=pos>78;
+  var face = act==='pet'?'big':petFace(pet);
+  var napMins = sleeping?Math.max(1,Math.ceil((pet.sleepUntil-Date.now()/1000)/60)):0;
+
+  return (
+    <div style={{position:'absolute',left:pos+'%',bottom:6,transition:'left '+dur+'s linear',transform:'translateX(-50%)',zIndex:showFeed?30:10}} className="select-none">
+      {/* floating reaction burst */}
+      {hearts.map(function(h){
+        return <span key={h.id} style={{position:'absolute',bottom:fs+44,left:'50%',marginLeft:h.dx,fontSize:16,animation:'heartUp '+h.d+'s ease-out forwards',pointerEvents:'none',zIndex:20}}>{h.art}</span>;
+      })}
+      {/* sleeping zzz */}
+      {sleeping&&<span style={{position:'absolute',bottom:fs+40,left:'58%',fontSize:15,animation:'zzzFloat 2.2s ease-in-out infinite',pointerEvents:'none'}}>💤</span>}
+      {sleeping&&<span style={{position:'absolute',bottom:fs+50,left:'70%',fontSize:11,animation:'zzzFloat 2.2s ease-in-out infinite',animationDelay:'1.1s',pointerEvents:'none'}}>💤</span>}
+      {/* feed popover */}
+      {showFeed&&(
+        <div style={{position:'absolute',bottom:fs+62,left:nearEdgeL?0:nearEdgeR?'auto':'50%',right:nearEdgeR?0:'auto',transform:nearEdgeL||nearEdgeR?'none':'translateX(-50%)'}}
+          className="feed-pop bg-white rounded-xl shadow-xl border border-purple-100 p-2 w-44 z-30">
+          <p className="text-xs font-bold text-gray-500 mb-1.5 text-center">{isEgg?"Warm the egg 🍳":"Feed "+sp.name+" 🍽️"}</p>
+          {shopItems.food.map(function(f){
+            var isPref=(sp.preferredFood||[]).includes(f.id);
+            var ok=kid.balance>=f.cost;
+            return (
+              <button key={f.id} disabled={!ok}
+                onClick={function(){doFeed(f);}}
+                className={"w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold mb-1 transition "+(ok?(isPref?"bg-purple-50 hover:bg-purple-100 text-purple-700":"bg-gray-50 hover:bg-gray-100 text-gray-600"):"bg-gray-50 text-gray-300 cursor-not-allowed")}>
+                <span className="text-base">{f.emoji}</span>
+                <span className="flex-1 text-left truncate">{f.name}{isPref&&" 💫"}</span>
+                <span>{f.cost}p</span>
+              </button>
+            );
+          })}
+          <p className="text-center text-xs text-gray-400">{kid.name}: {kid.balance} pts</p>
+        </div>
+      )}
+      <div className="flex flex-col items-center" style={{minWidth:72}}>
+        {/* name tag */}
+        <div className="bg-white/85 rounded-full px-2 py-0.5 shadow text-xs font-bold text-gray-600 whitespace-nowrap leading-tight flex items-center gap-1">
+          <span>{kid.emoji}</span>
+          <span>{isEgg?sp.name+" Egg":info.stage.name}</span>
+          {isAdult&&<span>👑</span>}
+          {sleeping&&<span className="text-indigo-500">💤{napMins}m</span>}
+          {hungry&&!isEgg&&!sleeping&&<span className="animate-pulse">😫</span>}
+          {tired&&!hungry&&!isEgg&&!sleeping&&<span>🥱</span>}
+        </div>
+        {/* micro stat bars: hunger / joy / energy (egg shows hatch progress) */}
+        <div className="bg-white/80 rounded-md px-1 py-0.5 mt-1 mb-0.5 shadow space-y-0.5" style={{width:58}}>
+          {isEgg
+            ? <div className="flex items-center gap-0.5"><span style={{fontSize:8,lineHeight:1}}>🐣</span><div className="flex-1 bg-gray-200 rounded-full h-1"><div className="h-1 rounded-full bg-purple-400 transition-all" style={{width:info.progressPct+"%"}}/></div></div>
+            : [["🍖",pet.hunger,pet.hunger>=60?"#4ade80":pet.hunger>=30?"#facc15":"#f87171"],
+               ["😊",pet.joy,pet.joy>=60?"#f472b6":pet.joy>=30?"#facc15":"#f87171"],
+               ["⚡",100-pet.fatigue,pet.fatigue<=40?"#60a5fa":pet.fatigue<=75?"#facc15":"#f87171"]].map(function(s){
+                return (
+                  <div key={s[0]} className="flex items-center gap-0.5">
+                    <span style={{fontSize:8,lineHeight:1}}>{s[0]}</span>
+                    <div className="flex-1 bg-gray-200 rounded-full h-1"><div className="h-1 rounded-full transition-all" style={{width:s[1]+"%",background:s[2]}}/></div>
+                  </div>
+                );
+              })}
+        </div>
+        {isEgg&&<span className="font-bold text-purple-700/80 leading-none mb-0.5" style={{fontSize:10}}>{info.ptsToNext} pts to hatch!</span>}
+        {/* the pet itself */}
+        <button onClick={doPat} title={sleeping?"Shh… sleeping!":isEgg?"Tap to cuddle the egg!":"Tap to pat me!"}
+          style={{cursor:sleeping?'default':'pointer',touchAction:'manipulation',background:'none',border:'none',padding:0,lineHeight:1}}>
+          <span style={{display:'inline-block',transform:pet.id==='fish'&&dir===-1?'scaleX(-1)':'none'}}>
+            <span className={"inline-block "+animCls} style={{filter:isEgg&&info.progressPct>=60?'drop-shadow(0 0 8px #f59e0b)':'none',opacity:sleeping?0.85:1}}>
+              {isEgg
+                ? <EggSVG speciesId={pet.id} size={fs} progress={info.progressPct}/>
+                : <PetSVG speciesId={pet.id} size={fs} face={face} walking={act==='walk'}/>}
+            </span>
+          </span>
+        </button>
+        {/* care buttons */}
+        <div className="flex gap-0.5 mt-0.5">
+          <button onClick={doPat} disabled={sleeping} title={"Pat (+joy)"+(petConfig.patCost>0?" — "+petConfig.patCost+" pts":"")}
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":"bg-white/85 hover:bg-pink-100")}>✋</button>
+          {!isEgg&&<button onClick={doPlay} disabled={sleeping||tired} title={"Play (+joy, +tired)"+(petConfig.playCost>0?" — "+petConfig.playCost+" pts":"")}
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping||tired?"bg-gray-100 opacity-50":"bg-white/85 hover:bg-blue-100")}>⚽</button>}
+          <button onClick={function(){if(!sleeping)setShowFeed(!showFeed);}} disabled={sleeping} title="Feed"
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":hungry?"bg-red-100 animate-pulse":"bg-white/85 hover:bg-green-100")}>🍎</button>
+          {!isEgg&&<button onClick={doRest} disabled={sleeping} title="Take a nap (recovers energy)"
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":tired?"bg-indigo-100 animate-pulse":"bg-white/85 hover:bg-indigo-100")}>💤</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Pet Yard (home page habitat — all adopted pets live here) ──────────────────
+function PetYard({kids, shopItems, petConfig, onAction, onFeed}) {
+  var withPets=kids.filter(function(k){return !!k.pet;});
+  if(!withPets.length) return null;
+  return (
+    <div className="pet-yard rounded-2xl border-2 border-green-300 mb-4 relative shadow-md" style={{height:205}}>
+      {/* clipped scenery layer — pets & popovers live outside it so they aren't cut off */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{background:'linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 48%,#86efac 48%,#4ade80 100%)'}}>
+        <span style={{position:'absolute',top:8,right:14,fontSize:26}}>☀️</span>
+        <span className="cloud" style={{position:'absolute',top:10,fontSize:22,opacity:.85,animation:'cloudDrift 55s linear infinite'}}>☁️</span>
+        <span className="cloud" style={{position:'absolute',top:30,fontSize:16,opacity:.7,animation:'cloudDrift 80s linear infinite',animationDelay:'-30s'}}>☁️</span>
+        <span style={{position:'absolute',bottom:6,left:10,fontSize:24}}>🌳</span>
+        <span style={{position:'absolute',bottom:8,right:12,fontSize:18}}>🌷</span>
+        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 text-xs font-black text-sky-700/60 whitespace-nowrap">🐾 Pet Yard — tap a pet to show love!</div>
+      </div>
+      {withPets.map(function(k,idx){
+        var spread=(idx+1)*100/(withPets.length+1);
+        return <LivePet key={k.id} kid={k} shopItems={shopItems} petConfig={petConfig} onAction={onAction} onFeed={onFeed} initPos={Math.min(84,Math.max(10,spread))}/>;
+      })}
+    </div>
+  );
+}
+
+// ── Pet Card (kids view) ────────────────────────────────────────────────────────
+function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
+  var sp=getSpecies(pet.id),info=getStageInfo(sp,pet.growthPoints||0);
+  var stage=info.stage,nextStage=info.nextStage,progressPct=info.progressPct,ptsToNext=info.ptsToNext,stageIdx=info.stageIdx;
+  var m=moodLabel(pet.mood), isAdult=stageIdx===sp.stages.length-1, isEgg=stageIdx===0;
+  var prefNames=(sp.preferredFood||[]).map(function(fid){var f=shopItems.food.find(function(fi){return fi.id===fid;});return f?f.name:null;}).filter(Boolean).join(" & ");
+  var hungry=pet.hunger<30, tired=pet.fatigue>75;
+  var stats=[
+    {label:"🍖 Hunger", val:pet.hunger, cls:pet.hunger>=60?"bg-green-400":pet.hunger>=30?"bg-yellow-400":"bg-red-400 animate-pulse"},
+    {label:"😊 Joy",    val:pet.joy,    cls:pet.joy>=60?"bg-pink-400":pet.joy>=30?"bg-yellow-400":"bg-red-400 animate-pulse"},
+    {label:"⚡ Energy", val:100-pet.fatigue, cls:pet.fatigue<=40?"bg-blue-400":pet.fatigue<=75?"bg-yellow-400":"bg-red-400 animate-pulse"},
+  ];
+  return (
+    <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border-2 border-pink-200 p-4 flex flex-col items-center text-center gap-2">
+      <div className="flex items-center gap-1.5 flex-wrap justify-center">
+        <span className={"text-xs font-black px-2 py-0.5 rounded-full "+(isAdult?"bg-amber-100 text-amber-700":stageIdx>0?"bg-purple-100 text-purple-700":"bg-gray-100 text-gray-500")}>{stage.name}</span>
+        {sp.rare&&<span className="text-xs bg-pink-100 text-pink-600 font-bold px-2 py-0.5 rounded-full">✨ Rare</span>}
+        {pet.sleeping&&<span className="text-xs bg-indigo-100 text-indigo-600 font-bold px-2 py-0.5 rounded-full">💤 Napping</span>}
+        {hungry&&!pet.sleeping&&<span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full animate-pulse">😫 Needs food!</span>}
+        {tired&&!pet.sleeping&&!hungry&&<span className="text-xs bg-blue-100 text-blue-600 font-bold px-2 py-0.5 rounded-full">🥱 Needs rest!</span>}
+      </div>
+      <PetArt pet={pet} size="lg"/>
+      <p className="text-lg font-black text-gray-800 -mt-1">{sp.name}</p>
+      <p className={"text-xs font-bold "+m.cls}>{pet.sleeping?"Sleeping… 💤":m.text}</p>
+      <div className="w-full space-y-1.5">
+        {stats.map(function(s){
+          return (
+            <div key={s.label}>
+              <div className="flex justify-between text-xs text-gray-400 mb-0.5"><span>{s.label}</span><span>{s.val}%</span></div>
+              <div className="w-full bg-gray-200 rounded-full h-2"><div className={"h-2 rounded-full transition-all "+s.cls} style={{width:s.val+"%"}}/></div>
+            </div>
+          );
+        })}
+      </div>
+      {/* care actions */}
+      <div className="pet-actions flex gap-1.5 w-full mt-1">
+        <button onClick={function(){onAction(kid,'pat');}} disabled={pet.sleeping}
+          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":"bg-pink-100 hover:bg-pink-200 text-pink-700")}>
+          ✋ Pat{petConfig.patCost>0?" · "+petConfig.patCost+"p":""}
+        </button>
+        {!isEgg&&<button onClick={function(){onAction(kid,'play');}} disabled={pet.sleeping||tired}
+          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping||tired?"bg-gray-100 text-gray-300":"bg-blue-100 hover:bg-blue-200 text-blue-700")}>
+          ⚽ Play{petConfig.playCost>0?" · "+petConfig.playCost+"p":""}
+        </button>}
+        {!isEgg&&<button onClick={function(){onAction(kid,'rest');}} disabled={pet.sleeping}
+          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
+          💤 Rest
+        </button>}
+      </div>
+      {!isAdult&&<div className="w-full">
+        <div className="flex justify-between text-xs mb-1"><span className="text-purple-500 font-bold">Growth → {nextStage ? nextStage.name : ""}</span><span className="text-gray-400">{ptsToNext} pts to go</span></div>
+        <div className="w-full bg-purple-100 rounded-full h-2.5"><div className="h-2.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 transition-all" style={{width:progressPct+"%"}}/></div>
+        {prefNames&&<p className="text-xs text-purple-400 mt-1">💫 Fave food: <span className="font-bold">{prefNames}</span></p>}
+      </div>}
+      {isAdult&&<p className="text-xs font-black text-amber-600">👑 Fully grown!</p>}
+      <button onClick={onShop} className="pet-shop-btn w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl text-sm transition mt-1">🛒 Go to Pet Shop</button>
+    </div>
+  );
+}
+
+// ── Task Section (kids view — penalties are hidden) ────────────────────────────
+function TaskSection({kid, onComplete, onUndo, celebratingTasks}) {
+  var c=C[kid.color]||C.blue;
+  var hasTasks=(kid.tasks.basic||[]).length>0||(kid.tasks.bonus||[]).length>0;
+  if(!hasTasks) return <p className="text-center text-gray-400 py-10">No tasks set up yet — ask a parent to add some! 👩‍👦</p>;
+  return (
+    <div className="space-y-5">
+      {["basic","bonus"].map(function(cat){
+        var items=kid.tasks[cat]||[]; if(!items.length) return null;
+        return (
+          <div key={cat}>
+            <h4 className={"task-cat-head text-xs font-bold uppercase tracking-widest mb-2.5 "+(cat==="basic"?"text-blue-500":"text-green-500")}>
+              {cat==="basic"?"📋 Daily Tasks":"⭐ Bonus Tasks"}
+            </h4>
+            <div className="space-y-2">
+              {items.map(function(task){
+                var done=kid.completedToday.includes(task.id);
+                var celebrating=celebratingTasks&&celebratingTasks.has(task.id);
+                return (
+                  <div key={task.id} className={"task-row flex items-center gap-2 p-3 rounded-xl border transition-colors "+(done?"task-row-done bg-gray-50 border-gray-100":"bg-white border-gray-200")+" "+(celebrating?"task-flash":"")}>
+                    <div className="flex-1 min-w-0">
+                      <p className={"task-title text-sm leading-tight "+(done?"line-through text-gray-400":"text-gray-800 font-medium")}>{task.title}</p>
+                    </div>
+                    <span className={"task-pts text-xs font-bold flex-shrink-0 "+(task.points>0?"text-green-600":"text-red-500")}>{task.points>0?"+":""}{task.points}</span>
+                    {done
+                      ? <button onClick={function(){onUndo(kid.id,task);}} className="task-btn tap-btn flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-500 transition">↩ Undo</button>
+                      : <button onClick={function(){onComplete(kid.id,task);}} className={"task-btn task-btn-do tap-btn flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl text-xs font-bold text-white transition "+c.btn}>Done ✓</button>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Shop Panel (standalone — NOT inside App to prevent remounting) ─────────────
+function ShopPanel({kid, shopItems, onBuy}) {
+  if(!kid) return null;
+  var petSp=kid.pet?getSpecies(kid.pet.id):null;
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-sm text-gray-500">Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></p>
+        {!kid.pet&&<p className="text-xs text-orange-500 font-bold">Adopt a pet first!</p>}
+      </div>
+      {petSp&&<p className="text-xs text-purple-500 mb-3 bg-purple-50 rounded-xl px-3 py-2">💫 <span className="font-bold">{petSp.name}</span> loves: {(petSp.preferredFood||[]).map(function(fid){var f=shopItems.food.find(function(fi){return fi.id===fid;});return f?f.name:null;}).filter(Boolean).join(" & ")} — gives 2× growth!</p>}
+      {["food","toys","accessories"].map(function(cat){
+        return (
+        <div key={cat} className="mb-5">
+          <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">{cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}</h3>
+          <div className="space-y-2">
+            {shopItems[cat].map(function(item){
+              var isPref=petSp&&cat==="food"&&(petSp.preferredFood||[]).includes(item.id);
+              var canAfford=!!kid.pet&&kid.balance>=item.cost;
+              return (
+                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isPref?"bg-purple-50 border-purple-200":"bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>
+                    <div className="min-w-0">
+                      <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
+                      {isPref&&<span className="text-xs text-purple-500 font-bold ml-1.5">💫 fave</span>}
+                      <span className="text-xs text-green-600 ml-1.5">+{item.moodBoost}😊</span>
+                    </div>
+                  </div>
+                  <button disabled={!canAfford} onClick={function(){onBuy(item);}}
+                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(canAfford?isPref?"bg-purple-500 hover:bg-purple-600 text-white":"bg-indigo-500 hover:bg-indigo-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                    {item.cost} pts
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Adopt Panel ────────────────────────────────────────────────────────────────
+function AdoptPanel({kid, petCatalogue, onAdopt}) {
+  return (
+    <div>
+      <p className="text-sm text-gray-500 mb-4">Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></p>
+      {kid.pet&&<div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-700 font-bold">⚠️ You already have a pet — adopting a new one will replace them.</div>}
+      <div className="adopt-grid grid grid-cols-3 gap-2">
+        {petCatalogue.map(function(p){
+          var canAfford=kid.balance>=p.cost;
+          return (
+            <div key={p.id} className={"adopt-card flex flex-col items-center p-3 rounded-2xl border-2 relative transition "+(canAfford?p.rare?"border-purple-300 bg-purple-50 hover:border-purple-400":"border-pink-200 bg-pink-50 hover:border-pink-400":"border-gray-100 bg-gray-50 opacity-50")}>
+              {p.rare&&<span className="absolute top-1.5 right-1.5 text-xs">✨</span>}
+              <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={52} face="happy"/></span>
+              <span className="adopt-name font-bold text-gray-700 text-xs text-center leading-tight">{p.name}</span>
+              <span className="adopt-final text-xs text-gray-400 text-center">→ {p.stages[p.stages.length-1].name}</span>
+              <span className={"adopt-cost text-xs font-black mt-1 "+(p.rare?"text-purple-600":"text-pink-600")}>{p.cost} pts</span>
+              <button disabled={!canAfford} onClick={function(){onAdopt(p);}}
+                className={"adopt-btn mt-2 w-full py-1.5 rounded-xl text-xs font-bold transition "+(canAfford?p.rare?"bg-purple-500 hover:bg-purple-600 text-white":"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                {canAfford?"Adopt 🐾":"Need more pts"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Modal Shell ────────────────────────────────────────────────────────────────
+function Modal({title, onClose, children, wide}) {
+  return (
+    <div className="app-modal fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-3">
+      <div className={"bg-white rounded-2xl shadow-2xl w-full "+(wide?"max-w-3xl":"max-w-lg")+" max-h-[92vh] overflow-y-auto"}>
+        <div className="flex justify-between items-center px-5 py-4 border-b sticky top-0 bg-white rounded-t-2xl z-10">
+          <h3 className="text-lg font-black text-gray-800">{title}</h3>
+          <button onClick={onClose} className="icon-btn text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── PIN Modal ──────────────────────────────────────────────────────────────────
+function PinModal({hasPin, onVerified, onClose}) {
+  var pinState = useState('');
+  var pin = pinState[0]; var setPin = pinState[1];
+  var errState = useState('');
+  var err = errState[0]; var setErr = errState[1];
+  var busyState = useState(false);
+  var busy = busyState[0]; var setBusy = busyState[1];
+  var newPinState = useState('');
+  var newPin = newPinState[0]; var setNewPin = newPinState[1];
+  var cPinState = useState('');
+  var confirmPin = cPinState[0]; var setCPin = cPinState[1];
+
+  async function handleVerify() {
+    setBusy(true); setErr('');
+    var d=await callAPI('verify_pin',{pin:pin});
+    setBusy(false);
+    if(d.verified) onVerified(pin);
+    else setErr('Wrong PIN — try again.');
+  }
+  async function handleSetPin() {
+    if(newPin.length<4){setErr('PIN must be at least 4 digits');return;}
+    if(newPin!==confirmPin){setErr("PINs don't match");return;}
+    setBusy(true);
+    var d=await callAPI('set_pin',{pin:newPin});
+    setBusy(false);
+    if(d.ok) onVerified(newPin);
+    else setErr(d.error||'Error setting PIN');
+  }
+
+  if(!hasPin) return (
+    <Modal title="🔐 Set Admin PIN" onClose={onClose}>
+      <p className="text-sm text-gray-500 mb-4">Create a PIN to protect parent admin features.</p>
+      <div className="space-y-3">
+        <input type="password" inputMode="numeric" placeholder="New PIN (4+ digits)" value={newPin} onChange={function(e){setNewPin(e.target.value);}}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
+        <input type="password" inputMode="numeric" placeholder="Confirm PIN" value={confirmPin} onChange={function(e){setCPin(e.target.value);}}
+          onKeyDown={function(e){if(e.key==='Enter')handleSetPin();}}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
+        {err&&<p className="text-red-500 text-sm text-center">{err}</p>}
+        <button onClick={handleSetPin} disabled={busy} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition">{busy?'Setting…':'Set PIN & Open Admin'}</button>
+      </div>
+    </Modal>
+  );
+
+  return (
+    <Modal title="🔐 Parent Admin PIN" onClose={onClose}>
+      <p className="text-sm text-gray-500 mb-4 text-center">Enter your PIN to access parent settings.</p>
+      <div className="space-y-3">
+        <input type="password" inputMode="numeric" placeholder="Enter PIN" value={pin} onChange={function(e){setPin(e.target.value);}}
+          onKeyDown={function(e){if(e.key==='Enter')handleVerify();}} autoFocus
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
+        {err&&<p className="text-red-500 text-sm text-center">{err}</p>}
+        <button onClick={handleVerify} disabled={busy||!pin} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3 rounded-xl transition">{busy?'Checking…':'Unlock Admin'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Admin Modal (5 tabs: Today / Kids / Tasks / Shop / Settings) ───────────────
+function AdminModal({kids, shopItems, petCatalogue, petConfig, verifiedPin, hasPin,
+                     onUpdateKid, onAddKid, onDeleteKid, onSaveTask, onDeleteTask,
+                     onUpdateShop, onUpdatePetCost, onUpdatePetConfig, onNewDay, onChangePin,
+                     onComplete, onUndo, onCopyTasks, onClose}) {
+  var tabState = useState("today");
+  var tab = tabState[0]; var setTab = tabState[1];
+  var ekState = useState(kids[0] ? kids[0].id : "");
+  var editKidId = ekState[0]; var setEditKidId = ekState[1];
+  var nnState = useState("");
+  var newName = nnState[0]; var setNewName = nnState[1];
+  var neState = useState("🧒");
+  var newEmoji = neState[0]; var setNewEmoji = neState[1];
+  var ncState = useState("green");
+  var newColor = ncState[0]; var setNewColor = ncState[1];
+  var teState = useState({});
+  var taskEdits = teState[0]; var setTaskEdits = teState[1];
+  var beState = useState({});
+  var balEdits = beState[0]; var setBalEdits = beState[1];
+  var ntdState = useState({});
+  var newTaskDraft = ntdState[0]; var setNewTaskDraft = ntdState[1];
+  var cndState = useState(false);
+  var confirmNewDay = cndState[0]; var setCND = cndState[1];
+  var cdkState = useState(null);
+  var confirmDelKid = cdkState[0]; var setCDK = cdkState[1];
+  var cdtState = useState(null);
+  var confirmDelTask = cdtState[0]; var setCDT = cdtState[1];
+  var csState = useState("");
+  var copySource = csState[0]; var setCopySource = csState[1];
+  var np1State = useState("");
+  var newPin1 = np1State[0]; var setNP1 = np1State[1];
+  var np2State = useState("");
+  var newPin2 = np2State[0]; var setNP2 = np2State[1];
+  var pmState = useState("");
+  var pinMsg = pmState[0]; var setPinMsg = pmState[1];
+
+  var currentKid = kids.find(function(k){return k.id===editKidId;});
+
+  function Tb({k,label}) {
+    return (
+      <button onClick={function(){setTab(k);}}
+        className={"px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap "+(tab===k?"bg-indigo-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+        {label}
+      </button>
+    );
+  }
+
+  function getTV(tid,f,fb){
+    var edits = taskEdits[tid];
+    if(edits && edits[f] !== undefined) return edits[f];
+    return fb;
+  }
+  function setTV(tid,f,v){setTaskEdits(function(p){var n=Object.assign({},p);n[tid]=Object.assign({},p[tid]||{});n[tid][f]=v;return n;});}
+  function getBal(kid){var v=balEdits[kid];return v !== undefined ? v : '';}
+  function setBal(kid,v){setBalEdits(function(p){var n=Object.assign({},p);n[kid]=v;return n;});}
+
+  function startDraft(kidId,cat,defPts){
+    var key=kidId+'_'+cat;
+    setNewTaskDraft(function(p){var n=Object.assign({},p);n[key]={title:'',points:defPts};return n;});
+    setTimeout(function(){ var el=document.getElementById('draft_'+key); if(el)el.focus(); },60);
+  }
+  function commitDraft(kidId,cat){
+    var key=kidId+'_'+cat, d=newTaskDraft[key];
+    if(d && d.title && d.title.trim()) onSaveTask(kidId,{category:cat,title:d.title.trim(),points:d.points,isNew:true});
+    setNewTaskDraft(function(p){var n=Object.assign({},p);delete n[key];return n;});
+  }
+  function clearDraft(kidId,cat){
+    setNewTaskDraft(function(p){var n=Object.assign({},p);delete n[kidId+'_'+cat];return n;});
+  }
+
+  async function doChangePin(){
+    if(newPin1.length<4){setPinMsg("PIN must be at least 4 digits");return;}
+    if(newPin1!==newPin2){setPinMsg("PINs don't match");return;}
+    var d=await callAPI('set_pin',{pin:newPin1});
+    if(d.ok){setPinMsg("PIN updated ✓");setNP1("");setNP2("");onChangePin(newPin1);}
+    else setPinMsg(d.error||"Error");
+  }
+
+  return (
+    <Modal title="👩‍💻 Parent Admin" onClose={onClose} wide={true}>
+      {/* Tab bar + New Day button */}
+      <div className="flex flex-wrap gap-1.5 items-center mb-5 pb-4 border-b">
+        <Tb k="today"    label="📅 Today"/>
+        <Tb k="kids"     label="👨‍👩‍👧‍👦 Kids"/>
+        <Tb k="tasks"    label="✅ Tasks"/>
+        <Tb k="shop"     label="🛒 Shop & Pets"/>
+        <Tb k="settings" label="⚙️ Settings"/>
+        <div className="ml-auto">
+          {!confirmNewDay
+            ? <button onClick={function(){setCND(true);}} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 transition">🌅 New Day</button>
+            : <div className="flex items-center gap-1.5">
+                <span className="text-xs text-red-600 font-bold">Reset all tasks?</span>
+                <button onClick={function(){onNewDay();onClose();}} className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-red-500 hover:bg-red-600 text-white">Yes, reset</button>
+                <button onClick={function(){setCND(false);}} className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">Cancel</button>
+              </div>
+          }
+        </div>
+      </div>
+
+      {/* ── TODAY TAB ── */}
+      {tab==="today"&&<div>
+        <p className="text-xs text-gray-400 mb-4">Override task completions for any kid, or apply penalties.</p>
+        {kids.map(function(kid){
+          var c=C[kid.color]||C.blue;
+          return (
+            <div key={kid.id} className="mb-7">
+              <div className={"flex items-center gap-2 px-3 py-2.5 rounded-xl "+c.bg+" border-2 "+c.border+" mb-2.5"}>
+                <span className="text-2xl">{kid.emoji}</span>
+                <span className="font-black text-gray-800">{kid.name}</span>
+                <span className="ml-auto text-xs text-gray-500">Balance: <span className={"font-black "+c.txt}>{kid.balance} pts</span></span>
+              </div>
+              {["basic","bonus"].map(function(cat){
+                var items=kid.tasks[cat]||[]; if(!items.length) return null;
+                return (
+                  <div key={cat} className="mb-2">
+                    <span className={"text-xs font-bold uppercase tracking-widest ml-1 "+(cat==="basic"?"text-blue-400":"text-green-400")}>{cat==="basic"?"Daily Tasks":"Bonus"}</span>
+                    <div className="space-y-1 mt-1.5">
+                      {items.map(function(task){
+                        var done=kid.completedToday.includes(task.id);
+                        return (
+                          <div key={task.id} className={"flex items-center gap-3 p-2.5 rounded-xl border "+(done?"bg-green-50 border-green-100":"bg-gray-50 border-gray-100")}>
+                            <button onClick={function(){done?onUndo(kid.id,task):onComplete(kid.id,task);}}
+                              className={"w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold transition "+(done?"bg-green-500 border-green-500 text-white":"border-gray-300 hover:border-green-400")}>
+                              {done&&"✓"}
+                            </button>
+                            <span className={"text-sm flex-1 "+(done?"line-through text-gray-400":"text-gray-700")}>{task.title}</span>
+                            <span className={"text-xs font-bold "+(task.points>0?"text-green-600":"text-red-500")}>{task.points>0?"+":""}{task.points}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Penalties — admin only */}
+              {(kid.tasks.penalty||[]).length>0&&<div className="mb-2">
+                <span className="text-xs font-bold uppercase tracking-widest ml-1 text-red-400">⚠️ Penalties (parent-only)</span>
+                <div className="space-y-1 mt-1.5">
+                  {kid.tasks.penalty.map(function(task){
+                    return (
+                    <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-xl border bg-red-50 border-red-100">
+                      <span className="text-sm flex-1 text-gray-700">{task.title}</span>
+                      <span className="text-xs font-bold text-red-500">{task.points}</span>
+                      <button onClick={function(){onComplete(kid.id,task);}} className="px-3 py-1.5 bg-red-400 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition">Apply</button>
+                    </div>
+                    );
+                  })}
+                </div>
+              </div>}
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* ── KIDS TAB ── */}
+      {tab==="kids"&&<div>
+        <div className="space-y-2 mb-5">
+          {kids.map(function(kid){
+            var balV=getBal(kid.id);
+            var isConfDel=confirmDelKid===kid.id;
+            return (
+              <div key={kid.id} className="p-3 bg-gray-50 rounded-xl border">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-2xl">{kid.emoji}</span>
+                  <span className="font-bold text-gray-700 w-20 truncate">{kid.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-500 whitespace-nowrap">Set balance</label>
+                    <input type="number" placeholder={String(kid.balance)} value={balV}
+                      onChange={function(e){setBal(kid.id,e.target.value);}}
+                      onBlur={function(){
+                        var v=parseInt(getBal(kid.id));
+                        if(!isNaN(v)) onUpdateKid(kid.id,{balance:v});
+                        setBal(kid.id,'');
+                      }}
+                      className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+                    <span className="text-xs text-gray-400">pts</span>
+                  </div>
+                  <div className="ml-auto text-right text-xs space-y-0.5">
+                    <div>Today: <span className="font-bold text-green-600">+{kid.todayEarned} pts</span></div>
+                    <div>Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></div>
+                  </div>
+                  {kids.length>1&&!isConfDel&&(
+                    <button onClick={function(){setCDK(kid.id);}} className="text-red-300 hover:text-red-500 text-2xl leading-none font-bold">&times;</button>
+                  )}
+                </div>
+                {isConfDel&&(
+                  <div className="mt-2 pt-2 border-t border-red-200 flex items-center gap-2 flex-wrap">
+                    <p className="text-xs text-red-600 font-bold flex-1">Delete {kid.name} and all their data? Cannot be undone.</p>
+                    <button onClick={function(){onDeleteKid(kid.id);setCDK(null);}} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg">Delete</button>
+                    <button onClick={function(){setCDK(null);}} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg">Keep</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+          <p className="text-xs font-bold text-indigo-700 mb-3">+ Add New Kid</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input type="text" placeholder="Name" value={newName} onChange={function(e){setNewName(e.target.value);}}
+              className="border border-indigo-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 w-28"/>
+            <input type="text" placeholder="😀" value={newEmoji} onChange={function(e){setNewEmoji(e.target.value);}}
+              className="border border-indigo-200 rounded-lg px-2 py-2 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300 w-14"/>
+            <select value={newColor} onChange={function(e){setNewColor(e.target.value);}}
+              className="border border-indigo-200 rounded-lg px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 capitalize">
+              {COLOR_OPTS.map(function(c){return <option key={c} value={c}>{c}</option>;})}
+            </select>
+            <button onClick={function(){
+              if(!newName.trim()) return;
+              onAddKid({name:newName.trim(),emoji:newEmoji,color:newColor});
+              setNewName(""); setNewEmoji("🧒"); setNewColor("green");
+            }} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Add Kid</button>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── TASKS TAB ── */}
+      {tab==="tasks"&&<div>
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {kids.map(function(k){
+            return (
+            <button key={k.id} onClick={function(){setEditKidId(k.id);}}
+              className={"px-3 py-1.5 rounded-lg text-sm font-bold transition "+(editKidId===k.id?"bg-indigo-600 text-white":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+              {k.emoji} {k.name}
+            </button>
+            );
+          })}
+        </div>
+        {currentKid&&kids.length>1&&(
+          <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+            <span className="text-xs text-blue-700 font-bold">Copy tasks from:</span>
+            <select value={copySource} onChange={function(e){setCopySource(e.target.value);}}
+              className="border border-blue-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-300">
+              <option value="">— pick a kid —</option>
+              {kids.filter(function(k){return k.id!==editKidId;}).map(function(k){return <option key={k.id} value={k.id}>{k.emoji} {k.name}</option>;})}
+            </select>
+            {copySource&&(
+              <button onClick={function(){onCopyTasks(copySource,editKidId);setCopySource('');}}
+                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition">Copy</button>
+            )}
+          </div>
+        )}
+        {currentKid&&["basic","bonus","penalty"].map(function(cat){
+          return (
+          <div key={cat} className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <span className={"text-xs font-bold uppercase tracking-widest "+(cat==="basic"?"text-blue-500":cat==="bonus"?"text-green-500":"text-red-400")}>
+                {cat==="basic"?"📋 Daily Tasks (kids see)":cat==="bonus"?"⭐ Bonus (kids see)":"⚠️ Penalties (parent-only)"}
+              </span>
+              {!newTaskDraft[editKidId+'_'+cat]&&(
+                <button onClick={function(){startDraft(editKidId,cat,cat==="penalty"?-2:5);}}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold text-gray-600">+ Add</button>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {(currentKid.tasks[cat]||[]).map(function(task){
+                var isDel=confirmDelTask&&confirmDelTask.taskId===task.id&&confirmDelTask.kidId===editKidId;
+                return (
+                  <div key={task.id}>
+                    {!isDel?(
+                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-xl border">
+                        <input value={getTV(task.id,'title',task.title)}
+                          onChange={function(e){setTV(task.id,'title',e.target.value);}}
+                          onBlur={function(){onSaveTask(editKidId,{taskId:task.id,category:cat,title:getTV(task.id,'title',task.title),points:getTV(task.id,'points',task.points)});}}
+                          className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-300 min-w-0"/>
+                        <input type="number" value={getTV(task.id,'points',task.points)}
+                          onChange={function(e){setTV(task.id,'points',parseInt(e.target.value)||0);}}
+                          onBlur={function(){onSaveTask(editKidId,{taskId:task.id,category:cat,title:getTV(task.id,'title',task.title),points:getTV(task.id,'points',task.points)});}}
+                          className="w-14 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+                        <span className="text-xs text-gray-400 flex-shrink-0">pts</span>
+                        <button onClick={function(){setCDT({kidId:editKidId,taskId:task.id});}} className="text-red-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
+                      </div>
+                    ):(
+                      <div className="flex items-center gap-2 p-2.5 bg-red-50 rounded-xl border border-red-200">
+                        <span className="text-sm flex-1 text-red-600 font-medium">Delete "{task.title}"?</span>
+                        <button onClick={function(){onDeleteTask(editKidId,task.id);setCDT(null);}} className="px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-lg">Delete</button>
+                        <button onClick={function(){setCDT(null);}} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg">Keep</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {newTaskDraft[editKidId+'_'+cat]&&(
+                <div className="flex items-center gap-2 p-2 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <input id={'draft_'+editKidId+'_'+cat}
+                    placeholder="Task name…"
+                    value={newTaskDraft[editKidId+'_'+cat].title}
+                    onChange={function(e){var key=editKidId+'_'+cat;setNewTaskDraft(function(p){var n=Object.assign({},p);n[key]=Object.assign({},p[key],{title:e.target.value});return n;});}}
+                    onBlur={function(){commitDraft(editKidId,cat);}}
+                    onKeyDown={function(e){if(e.key==='Enter')commitDraft(editKidId,cat);if(e.key==='Escape')clearDraft(editKidId,cat);}}
+                    className="flex-1 border border-indigo-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-300 min-w-0 bg-white"/>
+                  <input type="number"
+                    value={newTaskDraft[editKidId+'_'+cat].points}
+                    onChange={function(e){var key=editKidId+'_'+cat;setNewTaskDraft(function(p){var n=Object.assign({},p);n[key]=Object.assign({},p[key],{points:parseInt(e.target.value)||0});return n;});}}
+                    className="w-14 border border-indigo-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300 bg-white"/>
+                  <span className="text-xs text-gray-400 flex-shrink-0">pts</span>
+                  <button onClick={function(){clearDraft(editKidId,cat);}} className="text-gray-400 hover:text-gray-600 font-bold text-xl leading-none">&times;</button>
+                </div>
+              )}
+            </div>
+          </div>
+          );
+        })}
+      </div>}
+
+      {/* ── SHOP & PETS TAB ── */}
+      {tab==="shop"&&<div>
+        <p className="text-xs text-gray-400 mb-4">Click away from a field to save changes.</p>
+        {["food","toys","accessories"].map(function(cat){
+          return (
+          <div key={cat} className="mb-5">
+            <h3 className={"text-xs font-bold uppercase tracking-widest mb-2.5 "+(cat==="food"?"text-green-500":cat==="toys"?"text-blue-500":"text-pink-500")}>
+              {cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}
+            </h3>
+            <div className="space-y-2">
+              {shopItems[cat].map(function(item){
+                return (
+                <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border flex-wrap">
+                  <span className="text-2xl">{item.emoji}</span>
+                  <span className="font-bold text-gray-700 text-sm flex-1 min-w-[80px]">{item.name}</span>
+                  <div className="flex items-center gap-1"><span className="text-xs text-gray-400">Cost</span>
+                    <input type="number" min="1" defaultValue={item.cost} key={item.id+'c'}
+                      onBlur={function(e){onUpdateShop(item.id,"cost",parseInt(e.target.value)||1);}}
+                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-purple-300"/>
+                    <span className="text-xs text-gray-400">pts</span>
+                  </div>
+                  <div className="flex items-center gap-1"><span className="text-xs text-gray-400">Mood+</span>
+                    <input type="number" min="1" max="100" defaultValue={item.moodBoost} key={item.id+'m'}
+                      onBlur={function(e){onUpdateShop(item.id,"moodBoost",parseInt(e.target.value)||1);}}
+                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-green-300"/>
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+          </div>
+          );
+        })}
+        <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-2.5 mt-2">💗 Pet Care Costs</h3>
+        <p className="text-xs text-gray-400 mb-2">How many points kids spend to pat or play with their pet, and how long a nap lasts. Set 0 to make it free (free pats are limited to one per 15 seconds).</p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
+            <span className="text-lg">✋</span><span className="text-xs font-bold text-gray-600">Pat</span>
+            <input type="number" min="0" defaultValue={petConfig.patCost} key={'pcfg_pat_'+petConfig.patCost}
+              onBlur={function(e){onUpdatePetConfig('patCost',parseInt(e.target.value)||0);}}
+              className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+            <span className="text-xs text-gray-400">pts</span>
+          </div>
+          <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
+            <span className="text-lg">⚽</span><span className="text-xs font-bold text-gray-600">Play</span>
+            <input type="number" min="0" defaultValue={petConfig.playCost} key={'pcfg_play_'+petConfig.playCost}
+              onBlur={function(e){onUpdatePetConfig('playCost',parseInt(e.target.value)||0);}}
+              className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+            <span className="text-xs text-gray-400">pts</span>
+          </div>
+          <div className="flex items-center gap-1.5 p-2.5 bg-indigo-50 rounded-xl border border-indigo-100">
+            <span className="text-lg">💤</span><span className="text-xs font-bold text-gray-600">Nap length</span>
+            <input type="number" min="1" defaultValue={petConfig.restMinutes} key={'pcfg_rest_'+petConfig.restMinutes}
+              onBlur={function(e){onUpdatePetConfig('restMinutes',parseInt(e.target.value)||10);}}
+              className="w-14 border border-indigo-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-indigo-300"/>
+            <span className="text-xs text-gray-400">min</span>
+          </div>
+        </div>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-2.5 mt-2">🐾 Adoption Costs</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {petCatalogue.map(function(pet){
+            return (
+            <div key={pet.id} className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-xl border border-pink-100">
+              <span className="text-xl">{pet.emoji}</span>
+              <span className="font-bold text-gray-700 text-xs flex-1">{pet.name}</span>
+              <input type="number" min="1" defaultValue={pet.cost} key={pet.id+'c'}
+                onBlur={function(e){onUpdatePetCost(pet.id,parseInt(e.target.value)||1);}}
+                className="w-14 border border-pink-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-pink-300"/>
+              <span className="text-xs text-gray-400">pts</span>
+            </div>
+            );
+          })}
+        </div>
+      </div>}
+
+      {/* ── SETTINGS TAB ── */}
+      {tab==="settings"&&<div>
+        <h3 className="font-bold text-gray-700 text-sm mb-1">🔐 Admin PIN</h3>
+        <p className="text-xs text-gray-400 mb-4">{hasPin?"Change your PIN — you'll stay logged in after changing.":"No PIN set. Add one to protect admin features."}</p>
+        <div className="space-y-2 max-w-xs">
+          <input type="password" inputMode="numeric" placeholder="New PIN (4+ digits)" value={newPin1}
+            onChange={function(e){setNP1(e.target.value);setPinMsg('');}}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-center text-xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
+          <input type="password" inputMode="numeric" placeholder="Confirm new PIN" value={newPin2}
+            onChange={function(e){setNP2(e.target.value);setPinMsg('');}}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-center text-xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
+          {pinMsg&&<p className={"text-sm "+(pinMsg.includes('✓')?"text-green-600":"text-red-500")}>{pinMsg}</p>}
+          <button onClick={doChangePin} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition">{hasPin?"Change PIN":"Set PIN"}</button>
+        </div>
+      </div>}
+
+      <div className="mt-6 pt-4 border-t flex justify-end">
+        <button onClick={onClose} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition">Close</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────────────────────
+function App() {
+  var kidsState = useState([]);
+  var kids = kidsState[0]; var setKids = kidsState[1];
+  var siState = useState({food:[],toys:[],accessories:[]});
+  var shopItems = siState[0]; var setShopItems = siState[1];
+  var pcState = useState({});
+  var petCosts = pcState[0]; var setPetCosts = pcState[1];
+  var pcfState = useState({patCost:1,playCost:2,restMinutes:10});
+  var petConfig = pcfState[0]; var setPetConfig = pcfState[1];
+  var hpState = useState(false);
+  var hasPin = hpState[0]; var setHasPin = hpState[1];
+  var ldState = useState(true);
+  var loading = ldState[0]; var setLoading = ldState[1];
+  var siIdState = useState('');
+  var selId = siIdState[0]; var setSelId = siIdState[1];
+  var ktState = useState('tasks');
+  var kidTab = ktState[0]; var setKidTab = ktState[1];
+  var saState = useState(false);
+  var showAdmin = saState[0]; var setShowAdmin = saState[1];
+  var spmState = useState(false);
+  var showPinModal = spmState[0]; var setSPM = spmState[1];
+  var toastState = useState(null);
+  var toast = toastState[0]; var setToast = toastState[1];
+  var celebState = useState(new Set());
+  var celebrating = celebState[0]; var setCelebr = celebState[1];
+  var firstLoad = useRef(true);
+
+  // PIN persisted in sessionStorage
+  var readStoredPin = function() { try { return sessionStorage.getItem('habitAdminPin')||''; } catch(e) { return ''; } };
+  var vpState = useState(readStoredPin);
+  var verifiedPin = vpState[0]; var setVPState = vpState[1];
+  function setVerifiedPin(pin) {
+    setVPState(pin);
+    try { pin ? sessionStorage.setItem('habitAdminPin',pin) : sessionStorage.removeItem('habitAdminPin'); } catch(e) {}
+  }
+
+  var kid = kids.find(function(k){return k.id===selId;})||kids[0];
+  var c   = C[kid && kid.color ? kid.color : 'blue']||C.blue;
+  var petCatalogue = PET_SPECIES.map(function(p){
+    var customCost = petCosts[p.id];
+    return Object.assign({},p,{cost: customCost !== undefined ? customCost : p.cost});
+  });
+  var minCost = petCatalogue.length ? Math.min.apply(null, petCatalogue.map(function(p){return p.cost;})) : 10;
+
+  function applyState(data) {
+    if(!data||!data.kids) return;
+    setKids(data.kids);
+    setShopItems(data.shopItems);
+    setPetCosts(data.petCosts);
+    if(data.petConfig) setPetConfig(data.petConfig);
+    setHasPin(data.hasPin);
+  }
+
+  function showToast(msg, type) {
+    type = type || 'success';
+    setToast({msg:msg,type:type});
+    setTimeout(function(){setToast(null);}, type==='error'?4500:2500);
+  }
+
+  var loadState = useCallback(async function() {
+    var data = await callAPI('state');
+    if(data && data.error){ showToast('Could not connect to server','error'); setLoading(false); return; }
+    applyState(data);
+    if(firstLoad.current && data && data.kids && data.kids.length>0){ setSelId(data.kids[0].id); firstLoad.current=false; }
+    setLoading(false);
+  },[]);
+
+  useEffect(function(){loadState();},[]);
+  useEffect(function(){
+    if(showAdmin) return;
+    var t=setInterval(loadState,30000);
+    return function(){clearInterval(t);};
+  },[showAdmin,loadState]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────────
+  async function handleComplete(kidId, task) {
+    var d=await callAPI('complete_task',{kidId:kidId,taskId:task.id,points:task.points});
+    if(d && d.error){ showToast('Could not save — check connection','error'); return; }
+    applyState(d);
+    var kk=kids.find(function(k){return k.id===kidId;});
+    var name = kk ? kk.name : '';
+    showToast(name+': '+(task.points>0?'+':'')+task.points+' pts ⭐');
+    if(task.points>0){
+      setCelebr(function(p){var n=new Set(p);n.add(task.id);return n;});
+      setTimeout(function(){setCelebr(function(p){var n=new Set(p);n.delete(task.id);return n;});},900);
+    }
+  }
+
+  async function handleUndo(kidId, task) {
+    var d=await callAPI('undo_task',{kidId:kidId,taskId:task.id,points:task.points});
+    if(d && d.error){ showToast('Could not undo — check connection','error'); return; }
+    applyState(d);
+    showToast('Undone: '+task.title);
+  }
+
+  async function handleAdopt(pet) {
+    var customCost = petCosts[pet.id];
+    var cost = customCost !== undefined ? customCost : pet.cost;
+    var d=await callAPI('adopt_pet',{kidId:selId,speciesId:pet.id,cost:cost});
+    if(d && d.error){ showToast(d.error||'Could not adopt','error'); return; }
+    applyState(d);
+    setKidTab('pet');
+    showToast((kid ? kid.name : '')+" adopted a "+pet.name+" egg! 🥚 Feed it to hatch!");
+  }
+
+  async function handleBuy(item) {
+    var kidObj=kids.find(function(k){return k.id===selId;});
+    if(!kidObj || !kidObj.pet) return;
+    var sp=getSpecies(kidObj.pet.id);
+    var isFood=shopItems.food.some(function(f){return f.id===item.id;});
+    var isPref=isFood&&(sp.preferredFood||[]).includes(item.id);
+    var growthGain=isFood?(isPref?item.moodBoost:Math.ceil(item.moodBoost/2)):Math.ceil(item.moodBoost/5);
+    var d=await callAPI('buy_item',{kidId:selId,itemId:item.id,cost:item.cost,moodBoost:item.moodBoost,growthGain:growthGain});
+    if(d && d.error){ showToast(d.error||'Could not buy','error'); return; }
+    applyState(d);
+    showToast(sp.name+' loved the '+item.name+'! '+item.emoji+(isPref?' 💫 Fave!':''));
+  }
+
+  // Pat / play / rest — pet care actions (costs are parent-configurable)
+  async function handlePetAction(kidObj, type){
+    if(!kidObj.pet) return false;
+    var d=await callAPI('pet_action',{kidId:kidObj.id,type:type});
+    if(d && d.error){ showToast(d.error,'error'); return false; }
+    applyState(d);
+    var spName=getSpecies(kidObj.pet.id).name;
+    if(type==='rest') showToast(spName+" is taking a nap! 💤 ("+petConfig.restMinutes+" min)");
+    if(type==='play') showToast(spName+" had so much fun playing! ⚽");
+    return true;
+  }
+
+  // Feed a specific kid's pet straight from the yard
+  async function handleFeed(kidObj, item){
+    if(!kidObj.pet) return false;
+    if(kidObj.balance<item.cost){ showToast(kidObj.name+" needs more points to buy that!", 'error'); return false; }
+    var sp=getSpecies(kidObj.pet.id);
+    var isPref=(sp.preferredFood||[]).includes(item.id);
+    var growthGain=isPref?item.moodBoost:Math.ceil(item.moodBoost/2);
+    var d=await callAPI('buy_item',{kidId:kidObj.id,itemId:item.id,cost:item.cost,moodBoost:item.moodBoost,growthGain:growthGain});
+    if(d && d.error){ showToast(d.error||'Could not feed','error'); return false; }
+    applyState(d);
+    var wasEgg=getStageInfo(sp,kidObj.pet.growthPoints||0).stageIdx===0;
+    var nowInfo=getStageInfo(sp,(kidObj.pet.growthPoints||0)+growthGain);
+    if(wasEgg&&nowInfo.stageIdx>0) showToast("🎉 The egg hatched! Say hi to "+kidObj.name+"'s "+nowInfo.stage.name+"!");
+    else showToast(sp.name+' munched the '+item.name+'! '+item.emoji+(isPref?' 💫 Fave!':''));
+    return true;
+  }
+
+  async function handleUpdatePetConfig(field, value){
+    var body={pin:verifiedPin}; body[field]=value;
+    var d=await callAPI('update_pet_config',body);
+    if(d && d.error){showToast('Error saving pet care setting','error');return;} applyState(d);
+  }
+
+  async function handleUpdateKid(kidId,updates){
+    var d=await callAPI('update_kid',{pin:verifiedPin,kidId:kidId,updates:updates});
+    if(d && d.error){showToast('Error saving','error');return;} applyState(d);
+  }
+  async function handleAddKid(info){
+    var d=await callAPI('add_kid',{pin:verifiedPin,name:info.name,emoji:info.emoji,color:info.color});
+    if(d && d.error){showToast('Error adding kid','error');return;} applyState(d); showToast(info.emoji+' '+info.name+' added!');
+  }
+  async function handleDeleteKid(id){
+    var d=await callAPI('delete_kid',{pin:verifiedPin,kidId:id});
+    if(d && d.error){showToast('Error deleting kid','error');return;} applyState(d);
+    if(selId===id){ var newKids = d && d.kids; setSelId(newKids && newKids[0] ? newKids[0].id : ''); }
+  }
+  async function handleSaveTask(kidId,taskData){
+    var body = Object.assign({pin:verifiedPin,kidId:kidId},taskData);
+    var d=await callAPI('save_task',body);
+    if(d && d.error){showToast('Error saving task','error');return;} applyState(d);
+  }
+  async function handleDeleteTask(kidId,taskId){
+    var d=await callAPI('delete_task',{pin:verifiedPin,kidId:kidId,taskId:taskId});
+    if(d && d.error){showToast('Error deleting task','error');return;} applyState(d);
+  }
+  async function handleUpdateShop(itemId,field,value){
+    var d=await callAPI('update_shop',{pin:verifiedPin,itemId:itemId,field:field,value:value});
+    if(d && d.error){showToast('Error saving shop item','error');return;} applyState(d);
+  }
+  async function handleUpdatePetCost(speciesId,cost){
+    var d=await callAPI('update_pet_cost',{pin:verifiedPin,speciesId:speciesId,cost:cost});
+    if(d && d.error){showToast('Error saving pet cost','error');return;} applyState(d);
+  }
+  async function handleNewDay(){
+    var d=await callAPI('new_day',{pin:verifiedPin});
+    if(d && d.error){showToast('Error resetting day','error');return;} applyState(d); showToast("🌅 New day! Tasks reset for everyone.");
+  }
+  async function handleCopyTasks(fromKidId,toKidId){
+    var fromKid=kids.find(function(k){return k.id===fromKidId;}); if(!fromKid) return;
+    var lastData=null;
+    var entries=Object.entries(fromKid.tasks);
+    for(var ei=0;ei<entries.length;ei++){
+      var cat=entries[ei][0], tasks=entries[ei][1];
+      for(var ti=0;ti<tasks.length;ti++){
+        var task=tasks[ti];
+        lastData=await callAPI('save_task',{pin:verifiedPin,kidId:toKidId,category:cat,title:task.title,points:task.points,isNew:true});
+      }
+    }
+    if(lastData) applyState(lastData);
+    showToast('Tasks copied from '+fromKid.name+'!');
+  }
+
+  function openAdmin(){
+    if(hasPin&&!verifiedPin){ setSPM(true); }
+    else { setShowAdmin(true); }
+  }
+
+  if(loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="text-5xl mb-4 animate-bounce">🌟</div>
+        <p className="text-gray-500 font-bold text-lg">Loading…</p>
+      </div>
+    </div>
+  );
+
+  var petMoodLow = kid && kid.pet && kid.pet.mood < 30;
+
+  return (
+    <div className="app-root max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="app-header flex justify-between items-center mb-4">
+        <div className="app-title-wrap">
+          <h1 className="app-title text-2xl font-black text-gray-800">🌟 Family Habit Tracker</h1>
+          <p className="app-subtitle text-gray-400 text-xs mt-0.5">Earn points · Adopt pets · Build great habits</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={loadState} className="icon-btn text-gray-400 hover:text-gray-600 text-xl" title="Refresh">🔄</button>
+          <button onClick={openAdmin} className="parents-btn tap-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">👩‍💻 Parents</button>
+        </div>
+      </div>
+
+      {/* Toast notification */}
+      {toast&&(
+        <div className={"app-toast fixed top-4 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full shadow-2xl text-sm font-bold z-50 "+(toast.type==='error'?"bg-red-600":"bg-gray-800")+" text-white"}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Modals */}
+      {showPinModal&&(
+        <PinModal hasPin={hasPin}
+          onVerified={function(pin){setVerifiedPin(pin);setSPM(false);setShowAdmin(true);}}
+          onClose={function(){setSPM(false);}}/>
+      )}
+      {showAdmin&&(
+        <AdminModal
+          kids={kids} shopItems={shopItems} petCatalogue={petCatalogue} petConfig={petConfig}
+          verifiedPin={verifiedPin} hasPin={hasPin}
+          onUpdateKid={handleUpdateKid} onAddKid={handleAddKid} onDeleteKid={handleDeleteKid}
+          onSaveTask={handleSaveTask} onDeleteTask={handleDeleteTask}
+          onUpdateShop={handleUpdateShop} onUpdatePetCost={handleUpdatePetCost} onUpdatePetConfig={handleUpdatePetConfig}
+          onNewDay={handleNewDay} onCopyTasks={handleCopyTasks}
+          onComplete={handleComplete} onUndo={handleUndo}
+          onChangePin={function(newPin){setVerifiedPin(newPin);}}
+          onClose={function(){setShowAdmin(false);loadState();}}/>
+      )}
+
+      {/* ── Kid Selector Cards ── */}
+      <div className={"kid-grid grid gap-3 mb-4 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-2 sm:grid-cols-4")}>
+        {kids.map(function(k){
+          var kc=C[k.color]||C.blue, sel=k.id===selId;
+          var max=maxDailyPts(k), pct=max>0?Math.min(100,Math.round(k.todayEarned/max*100)):0;
+          var petSp=k.pet?getSpecies(k.pet.id):null;
+          var petLow=k.pet&&k.pet.mood<30;
+          var doneCt=(k.completedToday||[]).length;
+          var totalCt=(k.tasks.basic||[]).length+(k.tasks.bonus||[]).length;
+          return (
+            <button key={k.id} onClick={function(){setSelId(k.id);setKidTab('tasks');}}
+              className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm")}>
+              <div className="kid-card-head flex items-center gap-2 mb-2">
+                <span className="kid-card-emoji text-2xl">{k.emoji}</span>
+                <span className="kid-card-name font-black text-gray-800 text-sm truncate">{k.name}</span>
+                {k.pet&&<span className="text-lg ml-auto flex-shrink-0" title={(petSp?petSp.name:"")+(petLow?" — needs food":"")}>{petSp ? petSp.emoji : ""}{petLow&&"🔴"}</span>}
+              </div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-500">Today</span>
+                <span className={"font-bold "+(k.todayEarned>=0?"text-green-600":"text-red-500")}>{k.todayEarned>=0?"+":""}{k.todayEarned} pts</span>
+              </div>
+              {max>0&&<div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5"><div className={"h-1.5 rounded-full transition-all "+kc.prog} style={{width:pct+"%"}}/></div>}
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">{doneCt}/{totalCt} tasks</span>
+                <span className={"font-bold "+kc.txt}>{k.balance} pts</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Identity Banner ── */}
+      {kid&&(
+        <div className={"identity-banner rounded-2xl border-2 "+c.border+" "+c.bg+" px-4 py-3 mb-4 flex items-center gap-3"}>
+          <span className="ib-emoji text-3xl">{kid.emoji}</span>
+          <div className="flex-1">
+            <p className="ib-name font-black text-gray-800 text-base">Hi {kid.name}!</p>
+            <p className="ib-hint text-xs text-gray-500">Tap each task when you've done it 👇</p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="ib-pts-label text-xs text-gray-400">Today's pts</p>
+            <p className={"ib-pts text-2xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pet Yard (all adopted pets, alive & interactive) ── */}
+      <PetYard kids={kids} shopItems={shopItems} petConfig={petConfig} onAction={handlePetAction} onFeed={handleFeed}/>
+
+      {/* ── Main Panel with tabs ── */}
+      {kid&&(
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+          {/* 4-tab navigation */}
+          <div className="kid-tabs flex border-b bg-gray-50">
+            {[
+              {k:'tasks', ico:'✅', label:'Tasks'},
+              {k:'pet',   ico:'🐾', label:'My Pet'+(petMoodLow?' 🔴':'')},
+              {k:'adopt', ico:'🌟', label:'Adopt'},
+              {k:'shop',  ico:'🛒', label:'Shop'},
+            ].map(function(item){
+              var k=item.k, label=item.label;
+              return (
+              <button key={k} onClick={function(){setKidTab(k);}}
+                className={"kid-tab-btn flex-1 py-3 text-xs font-bold transition border-b-2 "+(kidTab===k?"kid-tab-active border-indigo-500 text-indigo-600 bg-white":"border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100")}>
+                <span className="tab-ico">{item.ico}</span><span>{label}</span>
+              </button>
+              );
+            })}
+          </div>
+
+          <div className="p-4">
+            {/* Stats strip */}
+            <div className="stats-strip grid grid-cols-2 gap-2 mb-4">
+              <div className={"stat-box "+c.bg+" rounded-xl p-3 text-center"}>
+                <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Today</p>
+                <p className={"stat-num text-3xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
+                <p className="stat-unit text-xs text-gray-400">pts earned</p>
+              </div>
+              <div className="stat-box bg-indigo-50 rounded-xl p-3 text-center">
+                <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Balance</p>
+                <p className={"stat-num text-3xl font-black "+(kid.balance>=0?"text-indigo-600":"text-red-500")}>{kid.balance}</p>
+                <p className="stat-unit text-xs text-gray-400">pts total</p>
+              </div>
+            </div>
+            {maxDailyPts(kid)>0&&(
+              <p className="text-xs text-center text-gray-400 -mt-2 mb-4">
+                {(kid.completedToday||[]).length} of {(kid.tasks.basic||[]).length+(kid.tasks.bonus||[]).length} tasks · max today: <span className="font-bold">{maxDailyPts(kid)} pts</span>
+              </p>
+            )}
+
+            {/* Tab content */}
+            {kidTab==='tasks'&&<TaskSection kid={kid} onComplete={handleComplete} onUndo={handleUndo} celebratingTasks={celebrating}/>}
+
+            {kidTab==='pet'&&(
+              kid.pet
+                ? <PetCard kid={kid} pet={kid.pet} shopItems={shopItems} petConfig={petConfig} onAction={handlePetAction} onShop={function(){setKidTab('shop');}}/>
+                : <div className="text-center py-8">
+                    <p className="text-5xl mb-3">🐾</p>
+                    <p className="text-gray-500 text-sm mb-1">No pet yet!</p>
+                    <p className="text-gray-400 text-xs mb-5">Earn points and head to Adopt to get one.</p>
+                    <button onClick={function(){setKidTab('adopt');}} disabled={kid.balance<minCost}
+                      className={"px-6 py-2.5 rounded-xl font-bold text-sm transition "+(kid.balance>=minCost?"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                      {kid.balance>=minCost?"Adopt a Pet 🐾":"Need "+minCost+"+ pts to adopt"}
+                    </button>
+                  </div>
+            )}
+
+            {kidTab==='adopt'&&<AdoptPanel kid={kid} petCatalogue={petCatalogue} onAdopt={handleAdopt}/>}
+            {kidTab==='shop'&&<ShopPanel kid={kid} shopItems={shopItems} onBuy={handleBuy}/>}
+          </div>
+        </div>
+      )}
+
+      {!kid&&!loading&&(
+        <div className="text-center py-16 text-gray-400">
+          <p className="text-4xl mb-3">👨‍👩‍👧‍👦</p>
+          <p className="font-bold">No kids yet — open Parent Admin to add some!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "Family Habit Tracker",
+  "short_name": "Habit Tracker",
+  "description": "A fun habit tracking app for kids with virtual pets",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#6366f1",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "habit-logo-achieve-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "habit-logo-achieve.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

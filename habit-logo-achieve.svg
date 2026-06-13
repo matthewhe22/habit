@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Rounded square background -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <!-- Star gradient -->
+    <linearGradient id="star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <!-- Checkmark gradient -->
+    <linearGradient id="check" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="104" ry="104" fill="url(#bg)"/>
+
+  <!-- Star -->
+  <path d="M256 70 L310 170 L410 170 L335 240 L360 340 L256 280 L152 340 L177 240 L102 170 L202 170 Z"
+        fill="url(#star)" stroke="#d97706" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Star inner highlight -->
+  <path d="M256 95 L295 168 L370 168 L315 220 L335 295 L256 250 L177 295 L197 220 L142 168 L217 168 Z"
+        fill="url(#star)" opacity="0.55"/>
+
+  <!-- Eyes -->
+  <circle cx="222" cy="195" r="14" fill="#1e293b"/>
+  <circle cx="290" cy="195" r="14" fill="#1e293b"/>
+  <circle cx="226" cy="192" r="5" fill="white"/>
+  <circle cx="294" cy="192" r="5" fill="white"/>
+
+  <!-- Smile -->
+  <path d="M232 222 Q256 242 280 222" fill="none" stroke="#1e293b" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Cheeks -->
+  <circle cx="196" cy="218" r="13" fill="#fca5a5" opacity="0.35"/>
+  <circle cx="316" cy="218" r="13" fill="#fca5a5" opacity="0.35"/>
+
+  <!-- Crown -->
+  <path d="M195 142 L205 120 L220 138 L256 110 L292 138 L307 120 L317 142 Q317 150 195 150"
+        fill="#fcd34d" stroke="#b45309" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="195" y="148" width="122" height="5" rx="2.5" fill="#fcd34d"/>
+
+  <!-- Checkmark badge -->
+  <circle cx="342" cy="302" r="42" fill="url(#check)" stroke="#047857" stroke-width="5"/>
+  <path d="M318 300 L338 322 L365 282" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Sparkles -->
+  <circle cx="135" cy="128" r="7" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="388" cy="118" r="5" fill="#fbbf24" opacity="0.7"/>
+  <circle cx="118" cy="338" r="4" fill="#c4b5fd" opacity="0.6"/>
+  <circle cx="400" cy="340" r="3" fill="#c4b5fd" opacity="0.5"/>
+</svg>

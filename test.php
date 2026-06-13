@@ -1,0 +1,1 @@
+<?php echo json_encode(["pdo_sqlite"=>extension_loaded("pdo_sqlite"),"sqlite3"=>extension_loaded("sqlite3"),"pdo_mysql"=>extension_loaded("pdo_mysql"),"mysqli"=>extension_loaded("mysqli"),"php"=>PHP_VERSION]); ?>

@@ -1,0 +1,12 @@
+# Database - user data, do NOT commit
+data/
+*.db
+
+# macOS system files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Backups
+backup_*

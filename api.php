@@ -1,0 +1,441 @@
+<?php
+// ── Habit Tracker API ─────────────────────────────────────────────────────────
+header('Content-Type: application/json; charset=UTF-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
+
+$action = $_GET['action'] ?? '';
+$body   = json_decode(file_get_contents('php://input'), true) ?? [];
+
+// ── Database ──────────────────────────────────────────────────────────────────
+$dbDir = __DIR__ . '/data';
+if (!is_dir($dbDir)) mkdir($dbDir, 0755, true);
+
+try {
+    $db = new PDO('sqlite:' . $dbDir . '/habit.db');
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $db->exec('PRAGMA journal_mode=WAL;');
+    $db->exec('PRAGMA foreign_keys=ON;');
+    initDB($db);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'DB: ' . $e->getMessage()]);
+    exit;
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+try {
+    switch ($action) {
+        case 'state':          echo json_encode(getState($db)); break;
+        case 'complete_task':  echo json_encode(completeTask($db, $body)); break;
+        case 'undo_task':      echo json_encode(undoTask($db, $body)); break;
+        case 'adopt_pet':      echo json_encode(adoptPet($db, $body)); break;
+        case 'buy_item':       echo json_encode(buyItem($db, $body)); break;
+        case 'pet_action':     echo json_encode(petAction($db, $body)); break;
+        case 'update_pet_config': requireAdmin($db,$body); echo json_encode(updatePetConfig($db, $body)); break;
+        case 'new_day':        requireAdmin($db,$body); echo json_encode(newDay($db)); break;
+        case 'update_kid':     requireAdmin($db,$body); echo json_encode(updateKid($db, $body)); break;
+        case 'add_kid':        requireAdmin($db,$body); echo json_encode(addKid($db, $body)); break;
+        case 'delete_kid':     requireAdmin($db,$body); echo json_encode(deleteKid($db, $body)); break;
+        case 'save_task':      requireAdmin($db,$body); echo json_encode(saveTask($db, $body)); break;
+        case 'delete_task':    requireAdmin($db,$body); echo json_encode(deleteTask($db, $body)); break;
+        case 'update_shop':    requireAdmin($db,$body); echo json_encode(updateShop($db, $body)); break;
+        case 'update_pet_cost':requireAdmin($db,$body); echo json_encode(updatePetCost($db, $body)); break;
+        case 'verify_pin':     echo json_encode(verifyPin($db, $body)); break;
+        case 'set_pin':        echo json_encode(setPin($db, $body)); break;
+        default: http_response_code(400); echo json_encode(['error' => 'Unknown action']);
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => $e->getMessage()]);
+}
+
+// ── Init & Seed ───────────────────────────────────────────────────────────────
+function initDB(PDO $db): void {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+        CREATE TABLE IF NOT EXISTS kids (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, emoji TEXT DEFAULT '🧒',
+            color TEXT DEFAULT 'blue', balance INTEGER DEFAULT 0,
+            starting_balance INTEGER DEFAULT 0, today_earned INTEGER DEFAULT 0,
+            sort_order INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY, kid_id TEXT NOT NULL, category TEXT NOT NULL,
+            title TEXT NOT NULL, points INTEGER NOT NULL, sort_order INTEGER DEFAULT 0,
+            FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS completed_today (
+            kid_id TEXT NOT NULL, task_id TEXT NOT NULL,
+            PRIMARY KEY (kid_id, task_id)
+        );
+        CREATE TABLE IF NOT EXISTS pets (
+            kid_id TEXT PRIMARY KEY, species_id TEXT NOT NULL,
+            mood INTEGER DEFAULT 100, growth_points INTEGER DEFAULT 0,
+            last_pet INTEGER DEFAULT 0,
+            hunger INTEGER DEFAULT 80, joy INTEGER DEFAULT 80,
+            fatigue INTEGER DEFAULT 20, sleep_until INTEGER DEFAULT 0,
+            FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS shop_overrides (
+            item_id TEXT PRIMARY KEY, cost INTEGER, mood_boost INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS pet_cost_overrides (
+            species_id TEXT PRIMARY KEY, cost INTEGER
+        );
+    ");
+    // Migrate pets tables created before the petting / digital-pet features
+    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0"];
+    foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
+    $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
+    if ($count == 0) seedData($db);
+}
+
+function seedData(PDO $db): void {
+    $db->exec("INSERT INTO kids VALUES
+        ('aaron','Aaron','👦','blue',0,0,0,0),
+        ('ivy','Ivy','👧','pink',0,0,0,1)
+    ");
+    $tasks = [
+        // Aaron basic
+        ['a_bed','aaron','basic','Get out of bed when alarm sounds',2,0],
+        ['a_car','aaron','basic','Into car / ready to leave home on time',5,1],
+        ['a_hw','aaron','basic','Finish school homework before sleep',5,2],
+        ['a_cn','aaron','basic','Do Chinese School homework',5,3],
+        ['a_fl1','aaron','basic','Practice flute (private lesson)',5,4],
+        ['a_fl2','aaron','basic','Practice flute (band / others)',3,5],
+        ['a_teeth','aaron','basic','Brush teeth twice (morning & before sleep)',2,6],
+        ['a_shower','aaron','basic','Shower and change',1,7],
+        ['a_cloth','aaron','basic','Put dirty clothes / socks into basket',2,8],
+        ['a_pack','aaron','basic','Packed up for next day before sleep',5,9],
+        ['a_bed9','aaron','basic','Go to bed before 9 pm',5,10],
+        // Aaron bonus
+        ['a_dish','aaron','bonus','Help with dishwasher or other housework',5,0],
+        ['a_ivy','aaron','bonus',"Help with Ivy's reader or homework",5,1],
+        // Aaron penalty
+        ['a_p1','aaron','penalty','Dirty socks not in basket (e.g. coffee table)',-2,0],
+        ['a_p2','aaron','penalty','Late for school / activity (own reason)',-5,1],
+        // Ivy basic
+        ['i_sleep','ivy','basic','Sleep and wake up in own room',5,0],
+        ['i_car','ivy','basic','Into car / ready to leave home on time',5,1],
+        ['i_hw','ivy','basic','Finish reader & school homework before sleep',5,2],
+        ['i_cn','ivy','basic','Do Chinese School homework',2,3],
+        ['i_cello','ivy','basic','Practice cello',5,4],
+        ['i_shower','ivy','basic','Shower within 5 mins',3,5],
+        ['i_cloth','ivy','basic','Put dirty clothes / socks into basket',2,6],
+        ['i_clean','ivy','basic','Clean up and put things back after play',3,7],
+        ['i_pack','ivy','basic','Packed up for next day before sleep',5,8],
+        ['i_bed830','ivy','basic','Go to bed before 8:30 pm',5,9],
+        // Ivy bonus
+        ['i_house','ivy','bonus','Help with housework',5,0],
+        ['i_read','ivy','bonus','Read another book before sleep',5,1],
+        // Ivy penalty
+        ['i_p1','ivy','penalty','Not clean up or put things back',-3,0],
+        ['i_p2','ivy','penalty','Late for school / activity (own reason)',-5,1],
+    ];
+    $stmt = $db->prepare("INSERT INTO tasks VALUES (?,?,?,?,?,?)");
+    foreach ($tasks as $t) $stmt->execute($t);
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+function getState(PDO $db): array {
+    // Wake any pet whose nap has finished: big energy recovery + a little joy
+    $db->prepare("UPDATE pets SET fatigue=MAX(0,fatigue-70), joy=MIN(100,joy+5), sleep_until=0 WHERE sleep_until>0 AND sleep_until<=?")->execute([time()]);
+    $kids = [];
+    foreach ($db->query("SELECT * FROM kids ORDER BY sort_order, name") as $kid) {
+        $tasks = ['basic'=>[],'bonus'=>[],'penalty'=>[]];
+        $ts = $db->prepare("SELECT * FROM tasks WHERE kid_id=? ORDER BY sort_order");
+        $ts->execute([$kid['id']]);
+        foreach ($ts as $t) $tasks[$t['category']][] = ['id'=>$t['id'],'title'=>$t['title'],'points'=>(int)$t['points']];
+        $cs = $db->prepare("SELECT task_id FROM completed_today WHERE kid_id=?");
+        $cs->execute([$kid['id']]);
+        $pet = $db->prepare("SELECT * FROM pets WHERE kid_id=?");
+        $pet->execute([$kid['id']]);
+        $petRow = $pet->fetch();
+        $kids[] = [
+            'id'=>$kid['id'], 'name'=>$kid['name'], 'emoji'=>$kid['emoji'], 'color'=>$kid['color'],
+            'balance'=>(int)$kid['balance'], 'startingBalance'=>(int)$kid['starting_balance'],
+            'todayEarned'=>(int)$kid['today_earned'],
+            'tasks'=>$tasks,
+            'completedToday'=>array_column($cs->fetchAll(),'task_id'),
+            'pet'=>$petRow ? [
+                'id'=>$petRow['species_id'],
+                'hunger'=>(int)$petRow['hunger'], 'joy'=>(int)$petRow['joy'], 'fatigue'=>(int)$petRow['fatigue'],
+                'sleepUntil'=>(int)$petRow['sleep_until'],
+                'sleeping'=>((int)$petRow['sleep_until'])>time(),
+                // overall wellness, kept as 'mood' so existing UI bits work
+                'mood'=>(int)round(((int)$petRow['hunger']+(int)$petRow['joy']+(100-(int)$petRow['fatigue']))/3),
+                'growthPoints'=>(int)$petRow['growth_points'],
+            ] : null,
+        ];
+    }
+    $shop = defaultShopItems();
+    foreach ($db->query("SELECT * FROM shop_overrides") as $ov) {
+        foreach (['food','toys','accessories'] as $cat)
+            foreach ($shop[$cat] as &$i)
+                if ($i['id']===$ov['item_id']) {
+                    if ($ov['cost']!==null) $i['cost']=(int)$ov['cost'];
+                    if ($ov['mood_boost']!==null) $i['moodBoost']=(int)$ov['mood_boost'];
+                }
+    }
+    $costs = defaultPetCosts();
+    foreach ($db->query("SELECT * FROM pet_cost_overrides") as $co) $costs[$co['species_id']]=(int)$co['cost'];
+    $pinRow = $db->query("SELECT value FROM settings WHERE key='admin_pin'")->fetch();
+    return ['ok'=>true,'kids'=>$kids,'shopItems'=>$shop,'petCosts'=>$costs,'petConfig'=>getPetConfig($db),'hasPin'=>(bool)$pinRow];
+}
+
+function getPetConfig(PDO $db): array {
+    $row=$db->query("SELECT value FROM settings WHERE key='pet_config'")->fetch();
+    $cfg=$row ? (json_decode($row['value'],true)?:[]) : [];
+    return [
+        'patCost'=>(int)($cfg['patCost']??1),
+        'playCost'=>(int)($cfg['playCost']??2),
+        'restMinutes'=>(int)($cfg['restMinutes']??10),
+    ];
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function completeTask(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $taskId=$b['taskId']??''; $pts=(int)($b['points']??0);
+    if (!$kidId||!$taskId) return err('Missing params');
+    $chk=$db->prepare("SELECT 1 FROM completed_today WHERE kid_id=? AND task_id=?");
+    $chk->execute([$kidId,$taskId]);
+    if ($chk->fetch()) return err('Already completed');
+    $db->beginTransaction();
+    $db->prepare("INSERT INTO completed_today (kid_id,task_id) VALUES (?,?)")->execute([$kidId,$taskId]);
+    $db->prepare("UPDATE kids SET balance=balance+?,today_earned=today_earned+? WHERE id=?")->execute([$pts,$pts,$kidId]);
+    $db->commit();
+    return getState($db);
+}
+
+function undoTask(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $taskId=$b['taskId']??''; $pts=(int)($b['points']??0);
+    $db->beginTransaction();
+    $db->prepare("DELETE FROM completed_today WHERE kid_id=? AND task_id=?")->execute([$kidId,$taskId]);
+    $db->prepare("UPDATE kids SET balance=balance-?,today_earned=today_earned-? WHERE id=?")->execute([$pts,$pts,$kidId]);
+    $db->commit();
+    return getState($db);
+}
+
+function newDay(PDO $db): array {
+    // Daily pet life-cycle: pets get hungrier and a bit bored; the night's sleep restores energy
+    $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;
+               UPDATE pets SET hunger=MAX(0,hunger-25), joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0;");
+    return getState($db);
+}
+
+function petAction(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $type=$b['type']??'';
+    $st=$db->prepare("SELECT p.*, k.balance FROM pets p JOIN kids k ON k.id=p.kid_id WHERE p.kid_id=?");
+    $st->execute([$kidId]);
+    $pet=$st->fetch();
+    if (!$pet) return err('No pet');
+    $cfg=getPetConfig($db); $now=time();
+    $sleeping=((int)$pet['sleep_until'])>$now;
+
+    if ($type==='rest') {
+        if ($sleeping) return err('Already taking a nap! 💤');
+        $db->prepare("UPDATE pets SET sleep_until=? WHERE kid_id=?")->execute([$now+$cfg['restMinutes']*60,$kidId]);
+        return getState($db);
+    }
+    if ($sleeping) return err('Shh… your pet is sleeping! 💤');
+
+    if ($type==='pat') {
+        $cost=$cfg['patCost'];
+        if ((int)$pet['balance']<$cost) return err('Not enough points to pat');
+        // free pats are rate-limited so they can't be spammed
+        if ($cost===0 && $now-(int)$pet['last_pet']<15) return getState($db);
+        $db->beginTransaction();
+        if ($cost>0) $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
+        $db->prepare("UPDATE pets SET joy=MIN(100,joy+8), growth_points=growth_points+1, last_pet=? WHERE kid_id=?")->execute([$now,$kidId]);
+        $db->commit();
+        return getState($db);
+    }
+    if ($type==='play') {
+        $cost=$cfg['playCost'];
+        if ((int)$pet['balance']<$cost) return err('Not enough points to play');
+        if ((int)$pet['fatigue']>=80) return err('Too tired to play — needs a rest! 💤');
+        if ((int)$pet['hunger']<=10) return err('Too hungry to play — feed me first! 🍖');
+        $db->beginTransaction();
+        if ($cost>0) $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
+        $db->prepare("UPDATE pets SET joy=MIN(100,joy+15), fatigue=MIN(100,fatigue+20), hunger=MAX(0,hunger-10), growth_points=growth_points+2 WHERE kid_id=?")->execute([$kidId]);
+        $db->commit();
+        return getState($db);
+    }
+    return err('Unknown pet action');
+}
+
+function updatePetConfig(PDO $db, array $b): array {
+    $cfg=getPetConfig($db);
+    foreach (['patCost','playCost','restMinutes'] as $f)
+        if (isset($b[$f])) $cfg[$f]=max(0,(int)$b[$f]);
+    if ($cfg['restMinutes']<1) $cfg['restMinutes']=1;
+    $db->prepare("INSERT INTO settings(key,value) VALUES('pet_config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+       ->execute([json_encode($cfg)]);
+    return getState($db);
+}
+
+function adoptPet(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $speciesId=$b['speciesId']??''; $cost=(int)($b['cost']??0);
+    $kid=$db->prepare("SELECT balance FROM kids WHERE id=?"); $kid->execute([$kidId]);
+    $kd=$kid->fetch();
+    if (!$kd||$kd['balance']<$cost) return err('Insufficient balance');
+    $db->beginTransaction();
+    $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
+    $db->prepare("INSERT OR REPLACE INTO pets (kid_id,species_id,mood,growth_points) VALUES (?,?,100,0)")->execute([$kidId,$speciesId]);
+    $db->commit();
+    return getState($db);
+}
+
+function shopCategoryOf(string $id): ?string {
+    foreach (defaultShopItems() as $cat=>$items)
+        foreach ($items as $i) if ($i['id']===$id) return $cat;
+    return null;
+}
+
+function buyItem(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $itemId=$b['itemId']??''; $cost=(int)($b['cost']??0);
+    $moodBoost=(int)($b['moodBoost']??0); $growthGain=(int)($b['growthGain']??0);
+    $kd=$db->prepare("SELECT balance FROM kids WHERE id=?"); $kd->execute([$kidId]);
+    $kid=$kd->fetch();
+    if (!$kid||$kid['balance']<$cost) return err('Insufficient balance');
+    $hp=$db->prepare("SELECT * FROM pets WHERE kid_id=?"); $hp->execute([$kidId]);
+    $pet=$hp->fetch();
+    if (!$pet) return err('No pet');
+    if ((int)$pet['sleep_until']>time()) return err('Shh… your pet is sleeping! 💤');
+    $cat=shopCategoryOf($itemId)??'food';
+    $db->beginTransaction();
+    $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
+    if ($cat==='food')
+        $db->prepare("UPDATE pets SET hunger=MIN(100,hunger+?), joy=MIN(100,joy+5), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
+    elseif ($cat==='toys')
+        $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), fatigue=MIN(100,fatigue+15), hunger=MAX(0,hunger-5), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
+    else
+        $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
+    $db->commit();
+    return getState($db);
+}
+
+function updateKid(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $u=$b['updates']??[];
+    $sets=[]; $params=[];
+    if (isset($u['name']))           { $sets[]='name=?';            $params[]=$u['name']; }
+    if (isset($u['emoji']))          { $sets[]='emoji=?';           $params[]=$u['emoji']; }
+    if (isset($u['color']))          { $sets[]='color=?';           $params[]=$u['color']; }
+    if (isset($u['balance']))        { $sets[]='balance=?';         $params[]=(int)$u['balance']; }
+    if (isset($u['startingBalance'])){ $sets[]='starting_balance=?';$params[]=(int)$u['startingBalance']; }
+    if (empty($sets)) return getState($db);
+    $params[]=$kidId;
+    $db->prepare("UPDATE kids SET ".implode(',',$sets)." WHERE id=?")->execute($params);
+    return getState($db);
+}
+
+function addKid(PDO $db, array $b): array {
+    $id='kid_'.uniqid();
+    $ord=$db->query("SELECT COALESCE(MAX(sort_order)+1,0) as n FROM kids")->fetch()['n'];
+    $db->prepare("INSERT INTO kids (id,name,emoji,color,sort_order) VALUES (?,?,?,?,?)")
+       ->execute([$id,$b['name']??'Kid',$b['emoji']??'🧒',$b['color']??'green',$ord]);
+    return getState($db);
+}
+
+function deleteKid(PDO $db, array $b): array {
+    $id=$b['kidId']??'';
+    foreach(['tasks','completed_today','pets'] as $t)
+        $db->prepare("DELETE FROM $t WHERE kid_id=?")->execute([$id]);
+    $db->prepare("DELETE FROM kids WHERE id=?")->execute([$id]);
+    return getState($db);
+}
+
+function saveTask(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $taskId=$b['taskId']??'';
+    $cat=$b['category']??'basic'; $title=$b['title']??'Task'; $pts=(int)($b['points']??5);
+    if (!$kidId) return err('Missing kidId');
+    if (!$taskId||($b['isNew']??false)) {
+        $taskId=$kidId.'_'.$cat.'_'.uniqid();
+        $ord=$db->prepare("SELECT COALESCE(MAX(sort_order)+1,0) as n FROM tasks WHERE kid_id=? AND category=?");
+        $ord->execute([$kidId,$cat]);
+        $db->prepare("INSERT INTO tasks (id,kid_id,category,title,points,sort_order) VALUES (?,?,?,?,?,?)")
+           ->execute([$taskId,$kidId,$cat,$title,$pts,$ord->fetch()['n']]);
+    } else {
+        $db->prepare("UPDATE tasks SET title=?,points=? WHERE id=? AND kid_id=?")->execute([$title,$pts,$taskId,$kidId]);
+    }
+    return getState($db);
+}
+
+function deleteTask(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $taskId=$b['taskId']??'';
+    $db->prepare("DELETE FROM tasks WHERE id=? AND kid_id=?")->execute([$taskId,$kidId]);
+    $db->prepare("DELETE FROM completed_today WHERE kid_id=? AND task_id=?")->execute([$kidId,$taskId]);
+    return getState($db);
+}
+
+function updateShop(PDO $db, array $b): array {
+    $id=$b['itemId']??''; $field=$b['field']??''; $val=(int)($b['value']??0);
+    if ($field==='cost')
+        $db->prepare("INSERT INTO shop_overrides(item_id,cost,mood_boost) VALUES(?,?,NULL) ON CONFLICT(item_id) DO UPDATE SET cost=excluded.cost")->execute([$id,$val]);
+    elseif ($field==='moodBoost')
+        $db->prepare("INSERT INTO shop_overrides(item_id,cost,mood_boost) VALUES(?,NULL,?) ON CONFLICT(item_id) DO UPDATE SET mood_boost=excluded.mood_boost")->execute([$id,$val]);
+    return getState($db);
+}
+
+function updatePetCost(PDO $db, array $b): array {
+    $db->prepare("INSERT INTO pet_cost_overrides(species_id,cost) VALUES(?,?) ON CONFLICT(species_id) DO UPDATE SET cost=excluded.cost")
+       ->execute([$b['speciesId']??'',(int)($b['cost']??0)]);
+    return getState($db);
+}
+
+function verifyPin(PDO $db, array $b): array {
+    $row=$db->query("SELECT value FROM settings WHERE key='admin_pin'")->fetch();
+    if (!$row) return ['ok'=>true,'verified'=>true]; // no PIN set = open
+    return password_verify($b['pin']??'',$row['value'])
+        ? ['ok'=>true,'verified'=>true]
+        : ['ok'=>false,'verified'=>false,'error'=>'Wrong PIN'];
+}
+
+function setPin(PDO $db, array $b): array {
+    $pin=$b['pin']??'';
+    if (strlen($pin)<4) return err('PIN must be at least 4 digits');
+    $hash=password_hash($pin,PASSWORD_DEFAULT);
+    $db->prepare("INSERT INTO settings(key,value) VALUES('admin_pin',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")->execute([$hash]);
+    return ['ok'=>true];
+}
+
+function requireAdmin(PDO $db, array $b): void {
+    $row=$db->query("SELECT value FROM settings WHERE key='admin_pin'")->fetch();
+    if (!$row) return; // no PIN set
+    if (!password_verify($b['pin']??'',$row['value'])) {
+        http_response_code(403);
+        echo json_encode(['error'=>'Admin PIN required','authFail'=>true]);
+        exit;
+    }
+}
+
+function err(string $msg): array { return ['ok'=>false,'error'=>$msg]; }
+
+// ── Static data ───────────────────────────────────────────────────────────────
+function defaultShopItems(): array {
+    return [
+        'food'=>[
+            ['id'=>'snack','name'=>'Yummy Snack','emoji'=>'🍎','cost'=>3,'moodBoost'=>10],
+            ['id'=>'meal', 'name'=>'Fancy Meal', 'emoji'=>'🍖','cost'=>6,'moodBoost'=>20],
+            ['id'=>'treat','name'=>'Sweet Treat','emoji'=>'🍩','cost'=>5,'moodBoost'=>15],
+        ],
+        'toys'=>[
+            ['id'=>'ball',  'name'=>'Bouncy Ball','emoji'=>'⚽','cost'=>5,'moodBoost'=>15],
+            ['id'=>'rope',  'name'=>'Tug Rope',   'emoji'=>'🪢','cost'=>4,'moodBoost'=>12],
+            ['id'=>'puzzle','name'=>'Puzzle Toy', 'emoji'=>'🧩','cost'=>8,'moodBoost'=>20],
+        ],
+        'accessories'=>[
+            ['id'=>'bow',   'name'=>'Cute Bow',      'emoji'=>'🎀','cost'=>6, 'moodBoost'=>5],
+            ['id'=>'hat',   'name'=>'Party Hat',     'emoji'=>'🎩','cost'=>8, 'moodBoost'=>8],
+            ['id'=>'collar','name'=>'Sparkle Collar','emoji'=>'💎','cost'=>10,'moodBoost'=>5],
+        ],
+    ];
+}
+
+function defaultPetCosts(): array {
+    return ['dragon'=>60,'unicorn'=>50,'kitten'=>20,'doggy'=>20,'fish'=>10,'turtle'=>15,'bunny'=>20,'hamster'=>15,'parrot'=>25];
+}
