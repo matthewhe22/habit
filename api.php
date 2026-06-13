@@ -44,6 +44,11 @@ try {
         case 'delete_task':    requireAdmin($db,$body); echo json_encode(deleteTask($db, $body)); break;
         case 'update_shop':    requireAdmin($db,$body); echo json_encode(updateShop($db, $body)); break;
         case 'update_pet_cost':requireAdmin($db,$body); echo json_encode(updatePetCost($db, $body)); break;
+        case 'redeem_reward':  echo json_encode(redeemReward($db, $body)); break;
+        case 'add_reward':     requireAdmin($db,$body); echo json_encode(addReward($db, $body)); break;
+        case 'update_reward':  requireAdmin($db,$body); echo json_encode(updateReward($db, $body)); break;
+        case 'delete_reward':  requireAdmin($db,$body); echo json_encode(deleteReward($db, $body)); break;
+        case 'delete_redemption': requireAdmin($db,$body); echo json_encode(deleteRedemption($db, $body)); break;
         case 'verify_pin':     echo json_encode(verifyPin($db, $body)); break;
         case 'set_pin':        echo json_encode(setPin($db, $body)); break;
         default: http_response_code(400); echo json_encode(['error' => 'Unknown action']);
@@ -86,12 +91,24 @@ function initDB(PDO $db): void {
         CREATE TABLE IF NOT EXISTS pet_cost_overrides (
             species_id TEXT PRIMARY KEY, cost INTEGER
         );
+        CREATE TABLE IF NOT EXISTS rewards (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, emoji TEXT DEFAULT '🎁',
+            cost INTEGER NOT NULL DEFAULT 50, sort_order INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS redemptions (
+            id TEXT PRIMARY KEY, kid_id TEXT NOT NULL, reward_id TEXT,
+            name TEXT NOT NULL, emoji TEXT DEFAULT '🎁', cost INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE
+        );
     ");
     // Migrate pets tables created before the petting / digital-pet features
     $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0"];
     foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
     $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
     if ($count == 0) seedData($db);
+    $rc = $db->query("SELECT COUNT(*) as c FROM rewards")->fetch()['c'];
+    if ($rc == 0) seedRewards($db);
 }
 
 function seedData(PDO $db): void {
@@ -140,6 +157,19 @@ function seedData(PDO $db): void {
     foreach ($tasks as $t) $stmt->execute($t);
 }
 
+function seedRewards(PDO $db): void {
+    $rewards = [
+        ['rw_movie',   'Movie Night',          '🍿', 60, 0],
+        ['rw_game',    '30 min Game Time',     '🎮', 30, 1],
+        ['rw_icecream','Ice Cream Treat',       '🍦', 25, 2],
+        ['rw_latebed', 'Stay Up 30 min Late',  '🌙', 40, 3],
+        ['rw_dinner',  'Pick Family Dinner',   '🍕', 50, 4],
+        ['rw_outing',  'Park / Outing Trip',   '🏞️', 80, 5],
+    ];
+    $stmt = $db->prepare("INSERT INTO rewards VALUES (?,?,?,?,?)");
+    foreach ($rewards as $r) $stmt->execute($r);
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 function getState(PDO $db): array {
     // Wake any pet whose nap has finished: big energy recovery + a little joy
@@ -183,8 +213,14 @@ function getState(PDO $db): array {
     }
     $costs = defaultPetCosts();
     foreach ($db->query("SELECT * FROM pet_cost_overrides") as $co) $costs[$co['species_id']]=(int)$co['cost'];
+    $rewards = [];
+    foreach ($db->query("SELECT * FROM rewards ORDER BY sort_order, name") as $r)
+        $rewards[] = ['id'=>$r['id'],'name'=>$r['name'],'emoji'=>$r['emoji'],'cost'=>(int)$r['cost']];
+    $redemptions = [];
+    foreach ($db->query("SELECT * FROM redemptions ORDER BY created_at DESC LIMIT 100") as $r)
+        $redemptions[] = ['id'=>$r['id'],'kidId'=>$r['kid_id'],'name'=>$r['name'],'emoji'=>$r['emoji'],'cost'=>(int)$r['cost'],'createdAt'=>(int)$r['created_at']];
     $pinRow = $db->query("SELECT value FROM settings WHERE key='admin_pin'")->fetch();
-    return ['ok'=>true,'kids'=>$kids,'shopItems'=>$shop,'petCosts'=>$costs,'petConfig'=>getPetConfig($db),'hasPin'=>(bool)$pinRow];
+    return ['ok'=>true,'kids'=>$kids,'shopItems'=>$shop,'petCosts'=>$costs,'petConfig'=>getPetConfig($db),'rewards'=>$rewards,'redemptions'=>$redemptions,'hasPin'=>(bool)$pinRow];
 }
 
 function getPetConfig(PDO $db): array {
@@ -384,6 +420,55 @@ function updateShop(PDO $db, array $b): array {
 function updatePetCost(PDO $db, array $b): array {
     $db->prepare("INSERT INTO pet_cost_overrides(species_id,cost) VALUES(?,?) ON CONFLICT(species_id) DO UPDATE SET cost=excluded.cost")
        ->execute([$b['speciesId']??'',(int)($b['cost']??0)]);
+    return getState($db);
+}
+
+// ── Rewards & redemptions ───────────────────────────────────────────────────────
+function redeemReward(PDO $db, array $b): array {
+    $kidId=$b['kidId']??''; $rewardId=$b['rewardId']??'';
+    if (!$kidId||!$rewardId) return err('Missing params');
+    $r=$db->prepare("SELECT * FROM rewards WHERE id=?"); $r->execute([$rewardId]);
+    $reward=$r->fetch();
+    if (!$reward) return err('Reward not found');
+    $k=$db->prepare("SELECT balance FROM kids WHERE id=?"); $k->execute([$kidId]);
+    $kid=$k->fetch();
+    if (!$kid) return err('Kid not found');
+    if ((int)$kid['balance']<(int)$reward['cost']) return err('Not enough points to redeem that yet');
+    $db->beginTransaction();
+    $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([(int)$reward['cost'],$kidId]);
+    $db->prepare("INSERT INTO redemptions (id,kid_id,reward_id,name,emoji,cost,created_at) VALUES (?,?,?,?,?,?,?)")
+       ->execute(['rdm_'.uniqid(),$kidId,$rewardId,$reward['name'],$reward['emoji'],(int)$reward['cost'],time()]);
+    $db->commit();
+    return getState($db);
+}
+
+function addReward(PDO $db, array $b): array {
+    $id='rw_'.uniqid();
+    $ord=$db->query("SELECT COALESCE(MAX(sort_order)+1,0) as n FROM rewards")->fetch()['n'];
+    $db->prepare("INSERT INTO rewards (id,name,emoji,cost,sort_order) VALUES (?,?,?,?,?)")
+       ->execute([$id,$b['name']??'Reward',$b['emoji']??'🎁',max(1,(int)($b['cost']??50)),$ord]);
+    return getState($db);
+}
+
+function updateReward(PDO $db, array $b): array {
+    $id=$b['rewardId']??''; if (!$id) return err('Missing rewardId');
+    $sets=[]; $params=[];
+    if (isset($b['name']))  { $sets[]='name=?';  $params[]=$b['name']; }
+    if (isset($b['emoji'])) { $sets[]='emoji=?'; $params[]=$b['emoji']; }
+    if (isset($b['cost']))  { $sets[]='cost=?';  $params[]=max(1,(int)$b['cost']); }
+    if (empty($sets)) return getState($db);
+    $params[]=$id;
+    $db->prepare("UPDATE rewards SET ".implode(',',$sets)." WHERE id=?")->execute($params);
+    return getState($db);
+}
+
+function deleteReward(PDO $db, array $b): array {
+    $db->prepare("DELETE FROM rewards WHERE id=?")->execute([$b['rewardId']??'']);
+    return getState($db);
+}
+
+function deleteRedemption(PDO $db, array $b): array {
+    $db->prepare("DELETE FROM redemptions WHERE id=?")->execute([$b['redemptionId']??'']);
     return getState($db);
 }
 
