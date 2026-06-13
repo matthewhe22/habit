@@ -229,6 +229,24 @@ const SPECIES_ART = {
   parrot: {body:"#e0f2fe", dark:"#0369a1", light:"#ffffff", belly:"#f0f9ff", cheek:"#7dd3fc"},
 };
 
+// Pokédex numbers per species stage (null = egg / use SVG fallback)
+const POKEMON_DEX = {
+  dragon:  [null, 147, 148, 149],  // Dratini, Dragonair, Dragonite
+  ghost:   [null,  92,  93,  94],  // Gastly, Haunter, Gengar
+  kitten:  [null,  52,  53,  53],  // Meowth, Persian, Persian
+  doggy:   [null, 506, 507, 508],  // Lillipup, Herdier, Stoutland
+  fish:    [null, 118, 119],       // Goldeen, Seaking
+  turtle:  [null,   7,   8,   9],  // Squirtle, Wartortle, Blastoise
+  bunny:   [null, 427, 428],       // Buneary, Lopunny
+  hamster: [null, 572, 573, 573],  // Minccino, Cinccino, Cinccino
+  parrot:  [null, 333, 334],       // Swablu, Altaria
+};
+function getPokemonSprite(speciesId, stageIdx) {
+  var dex=POKEMON_DEX[speciesId]; if(!dex) return null;
+  var id=dex[stageIdx]; if(!id) return null;
+  return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/'+id+'.png';
+}
+
 function EggSVG({speciesId, size, progress}) {
   var A=SPECIES_ART[speciesId]||SPECIES_ART.kitten;
   var gid='ge_'+speciesId;
@@ -254,6 +272,17 @@ function EggSVG({speciesId, size, progress}) {
 // face: 'happy' | 'big' | 'sad' | 'tired' | 'sleep'
 function PetSVG({speciesId, size, face, walking, stageIdx}) {
   size=size||48; face=face||'happy'; stageIdx=stageIdx||0;
+
+  // Use official Pokémon artwork when available
+  var spriteUrl=getPokemonSprite(speciesId, stageIdx);
+  if(spriteUrl) {
+    var filt=face==='sleep'?'grayscale(.35) brightness(.62)':face==='sad'?'grayscale(.2) brightness(.80)':face==='tired'?'brightness(.85)':undefined;
+    return (
+      <img src={spriteUrl} width={size} height={size} alt={speciesId} draggable={false}
+        style={{objectFit:'contain',display:'block',filter:filt,userSelect:'none'}}/>
+    );
+  }
+
   var baseA=SPECIES_ART[speciesId]||SPECIES_ART.kitten;
   // Dragonite (stage 3) uses warm orange palette
   var A=(speciesId==='dragon'&&stageIdx>=3)
