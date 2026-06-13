@@ -522,5 +522,5 @@ function defaultShopItems(): array {
 }
 
 function defaultPetCosts(): array {
-    return ['dragon'=>60,'unicorn'=>50,'kitten'=>20,'doggy'=>20,'fish'=>10,'turtle'=>15,'bunny'=>20,'hamster'=>15,'parrot'=>25];
+    return ['dragon'=>60,'ghost'=>45,'kitten'=>20,'doggy'=>20,'fish'=>10,'turtle'=>15,'bunny'=>20,'hamster'=>15,'parrot'=>25];
 }
