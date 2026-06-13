@@ -900,12 +900,12 @@ function AdoptPanel({kid, petCatalogue, onAdopt}) {
       <div className="adopt-grid grid grid-cols-3 gap-2">
         {petCatalogue.map(function(p){
           var canAfford=kid.balance>=p.cost;
+          var chain=p.stages.slice(1).map(function(s){return s.name;}).join(' → ');
           return (
             <div key={p.id} className={"adopt-card flex flex-col items-center p-3 rounded-2xl border-2 relative transition "+(canAfford?p.rare?"border-purple-300 bg-purple-50 hover:border-purple-400":"border-pink-200 bg-pink-50 hover:border-pink-400":"border-gray-100 bg-gray-50 opacity-50")}>
               {p.rare&&<span className="absolute top-1.5 right-1.5 text-xs">✨</span>}
-              <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={68} face="happy"/></span>
-              <span className="adopt-name font-bold text-gray-700 text-xs text-center leading-tight">{p.name}</span>
-              <span className="adopt-final text-xs text-gray-400 text-center">→ {p.stages[p.stages.length-1].name}</span>
+              <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={80} face="happy" stageIdx={1}/></span>
+              <span className="adopt-name font-bold text-gray-700 text-xs text-center leading-tight mt-1">{chain}</span>
               <span className={"adopt-cost text-xs font-black mt-1 "+(p.rare?"text-purple-600":"text-pink-600")}>{p.cost} pts</span>
               <button disabled={!canAfford} onClick={function(){onAdopt(p);}}
                 className={"adopt-btn mt-2 w-full py-1.5 rounded-xl text-xs font-bold transition "+(canAfford?p.rare?"bg-purple-500 hover:bg-purple-600 text-white":"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
@@ -1369,10 +1369,11 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
         <h3 className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-2.5 mt-2">🐾 Adoption Costs</h3>
         <div className="grid grid-cols-2 gap-2">
           {petCatalogue.map(function(pet){
+            var label=pet.stages[1]?pet.stages[1].name:pet.name;
             return (
             <div key={pet.id} className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-xl border border-pink-100">
-              <span className="text-xl">{pet.emoji}</span>
-              <span className="font-bold text-gray-700 text-xs flex-1">{pet.name}</span>
+              <span className="flex-shrink-0" style={{width:34,height:34,display:'inline-flex',alignItems:'center',justifyContent:'center'}}><PetSVG speciesId={pet.id} size={34} face="happy" stageIdx={1}/></span>
+              <span className="font-bold text-gray-700 text-xs flex-1 leading-tight">{label}</span>
               <input type="number" min="1" defaultValue={pet.cost} key={pet.id+'c'}
                 onBlur={function(e){onUpdatePetCost(pet.id,parseInt(e.target.value)||1);}}
                 className="w-14 border border-pink-200 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-pink-300"/>
