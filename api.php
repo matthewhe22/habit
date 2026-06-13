@@ -560,11 +560,7 @@ function defaultShopItems(): array {
             ['id'=>'rope',  'name'=>'Tug Rope',   'emoji'=>'🪢','cost'=>4,'moodBoost'=>12],
             ['id'=>'puzzle','name'=>'Puzzle Toy', 'emoji'=>'🧩','cost'=>8,'moodBoost'=>20],
         ],
-        'accessories'=>[
-            ['id'=>'bow',   'name'=>'Cute Bow',      'emoji'=>'🎀','cost'=>6, 'moodBoost'=>5],
-            ['id'=>'hat',   'name'=>'Party Hat',     'emoji'=>'🎩','cost'=>8, 'moodBoost'=>8],
-            ['id'=>'collar','name'=>'Sparkle Collar','emoji'=>'💎','cost'=>10,'moodBoost'=>5],
-        ],
+        'accessories'=>[],
         'home'=>[
             ['id'=>'box',    'name'=>'Cardboard Box', 'emoji'=>'📦','cost'=>5, 'moodBoost'=>0,'speedBonus'=>1.0],
             ['id'=>'pet_bed','name'=>'Cosy Pet Bed',  'emoji'=>'🛏️','cost'=>20,'moodBoost'=>0,'speedBonus'=>1.5],

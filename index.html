@@ -909,10 +909,10 @@ function ShopPanel({kid, shopItems, onBuy}) {
         {!kid.pet&&<p className="text-xs text-orange-500 font-bold">Adopt a pet first!</p>}
       </div>
       {petSp&&<p className="text-xs text-purple-500 mb-3 bg-purple-50 rounded-xl px-3 py-2">💫 <span className="font-bold">{petSp.name}</span> loves: {(petSp.preferredFood||[]).map(function(fid){var f=shopItems.food.find(function(fi){return fi.id===fid;});return f?f.name:null;}).filter(Boolean).join(" & ")} — gives 2× growth!</p>}
-      {["food","toys","accessories"].map(function(cat){
+      {["food","toys"].map(function(cat){
         return (
         <div key={cat} className="mb-5">
-          <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">{cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}</h3>
+          <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">{cat==="food"?"🍎 Food":"⚽ Toys"}</h3>
           <div className="space-y-2">
             {(shopItems[cat]||[]).map(function(item){
               var isPref=petSp&&cat==="food"&&(petSp.preferredFood||[]).includes(item.id);
@@ -1391,11 +1391,11 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
       {/* ── SHOP & PETS TAB ── */}
       {tab==="shop"&&<div>
         <p className="text-xs text-gray-400 mb-4">Click away from a field to save changes.</p>
-        {["food","toys","accessories"].map(function(cat){
+        {["food","toys"].map(function(cat){
           return (
           <div key={cat} className="mb-5">
-            <h3 className={"text-xs font-bold uppercase tracking-widest mb-2.5 "+(cat==="food"?"text-green-500":cat==="toys"?"text-blue-500":"text-pink-500")}>
-              {cat==="food"?"🍎 Food":cat==="toys"?"⚽ Toys":"🎀 Accessories"}
+            <h3 className={"text-xs font-bold uppercase tracking-widest mb-2.5 "+(cat==="food"?"text-green-500":"text-blue-500")}>
+              {cat==="food"?"🍎 Food":"⚽ Toys"}
             </h3>
             <div className="space-y-2">
               {(shopItems[cat]||[]).map(function(item){
@@ -1855,7 +1855,7 @@ function DesktopLayout(props) {
 function App() {
   var kidsState = useState([]);
   var kids = kidsState[0]; var setKids = kidsState[1];
-  var siState = useState({food:[],toys:[],accessories:[],home:[]});
+  var siState = useState({food:[],toys:[],home:[]});
   var shopItems = siState[0]; var setShopItems = siState[1];
   var pcState = useState({});
   var petCosts = pcState[0]; var setPetCosts = pcState[1];
