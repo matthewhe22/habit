@@ -71,7 +71,7 @@
       .chk-btn{width:44px!important;height:44px!important;border-radius:14px!important;font-size:1.15rem!important}
       .yard-btn{font-size:1.05rem!important;min-width:42px;min-height:42px;padding:6px 10px!important}
       /* taller play area + bigger feed popover */
-      .pet-yard{height:250px!important;border-radius:22px!important}
+      .pet-yard{height:320px!important;border-radius:22px!important}
       .feed-pop{width:13.5rem!important;padding:10px!important}
       .feed-pop button{min-height:46px!important;font-size:.9rem!important;border-radius:12px!important}
       .feed-pop .text-xs{font-size:.85rem!important}
@@ -545,7 +545,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
   var pet=kid.pet, sp=getSpecies(pet.id), info=getStageInfo(sp,pet.growthPoints||0);
   var isEgg=info.stageIdx===0;
   var isAdult=info.stageIdx===sp.stages.length-1;
-  var fs=isEgg?46:info.stageIdx===1?56:info.stageIdx===2?70:84;
+  var fs=isEgg?64:info.stageIdx===1?90:info.stageIdx===2?110:130;
   var sleeping=!!pet.sleeping;
   var hungry=pet.hunger<30, tired=pet.fatigue>75, sluggish=pet.fatigue>55||pet.hunger<40;
   var daysSinceBath=pet.daysSinceBath||0;
@@ -689,7 +689,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
         {/* name tag */}
         <div className="bg-white/85 rounded-full px-2 py-0.5 shadow text-xs font-bold text-gray-600 whitespace-nowrap leading-tight flex items-center gap-1">
           <span>{kid.emoji}</span>
-          <span>{isEgg?sp.name+" Egg":info.stage.name}</span>
+          <span>{pet.petName || (isEgg?sp.name+" Egg":info.stage.name)}</span>
           {isAdult&&<span>👑</span>}
           {sleeping&&<span className="text-indigo-500">💤{napMins}m</span>}
           {hungry&&!isEgg&&!sleeping&&<span className="animate-pulse">😫</span>}
@@ -802,7 +802,8 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
         {hungerLowDays>=2&&!isEgg&&<span className="text-xs bg-orange-100 text-orange-600 font-bold px-2 py-0.5 rounded-full animate-pulse">⚠️ Hungry {hungerLowDays}/3 days</span>}
       </div>
       <PetArt pet={pet} size="lg"/>
-      <p className="text-lg font-black text-gray-800 -mt-1">{sp.name}</p>
+      {pet.petName&&<p className="text-2xl font-black text-gray-800 -mt-1">"{pet.petName}"</p>}
+      <p className={"text-lg font-black -mt-1 "+(pet.petName?"text-gray-500":"text-gray-800")}>{sp.name}</p>
       <p className={"text-xs font-bold "+m.cls}>{pet.sleeping?"Sleeping… 💤":m.text}</p>
       <div className="w-full space-y-1.5">
         {stats.map(function(s){
@@ -973,23 +974,70 @@ function ShopPanel({kid, shopItems, onBuy}) {
 
 // ── Adopt Panel ────────────────────────────────────────────────────────────────
 function AdoptPanel({kid, petCatalogue, onAdopt}) {
+  var ppState=useState(null); var pendingPet=ppState[0]; var setPendingPet=ppState[1];
+  var pnState=useState('');   var petName=pnState[0];   var setPetName=pnState[1];
+  var hasPenalty=!!kid.adoptionPenalty;
+
+  if(pendingPet) {
+    var baseCost=pendingPet.cost;
+    var finalCost=hasPenalty?Math.ceil(baseCost*1.5):baseCost;
+    var canAfford=kid.balance>=finalCost;
+    var chain=pendingPet.stages.slice(1).map(function(s){return s.name;}).join(' → ');
+    return (
+      <div>
+        <div className="flex flex-col items-center mb-5">
+          <PetSVG speciesId={pendingPet.id} size={110} face="happy" stageIdx={1}/>
+          <p className="font-black text-gray-800 text-sm mt-2 text-center">{chain}</p>
+        </div>
+        <div className="mb-4">
+          <label className="text-sm font-bold text-gray-600 block mb-1.5">Give your pet a name! 🏷️</label>
+          <input autoFocus type="text" placeholder="e.g. Fluffy, Sparky, Shadow…" value={petName}
+            onChange={function(e){setPetName(e.target.value);}} maxLength={20}
+            className="w-full border-2 border-purple-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-300"/>
+          <p className="text-xs text-gray-400 mt-1">Leave blank to use the Pokémon name</p>
+        </div>
+        {hasPenalty&&<div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-red-700 font-bold">
+          ⚠️ Death penalty active — cost is 1.5× ({baseCost} → {finalCost} pts)
+        </div>}
+        <div className="flex gap-2 mt-1">
+          <button onClick={function(){setPendingPet(null);setPetName('');}}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 transition">← Back</button>
+          <button disabled={!canAfford}
+            onClick={function(){onAdopt(pendingPet,petName.trim());setPendingPet(null);setPetName('');}}
+            className={"flex-1 py-2.5 rounded-xl text-sm font-bold transition "+(canAfford?pendingPet.rare?"bg-purple-500 hover:bg-purple-600 text-white":"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+            {canAfford?"Adopt for "+finalCost+" pts 🐾":"Need "+finalCost+" pts"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-4">Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></p>
-      {kid.pet&&<div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-700 font-bold">⚠️ You already have a pet — adopting a new one will replace them.</div>}
+      <p className="text-sm text-gray-500 mb-3">Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></p>
+      {hasPenalty&&<div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-red-700 font-bold">
+        💀 Your pet passed away — next adoption costs <strong>1.5×</strong> as a penalty.
+      </div>}
+      {kid.pet&&!hasPenalty&&<div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-amber-700 font-bold">
+        ⚠️ You already have a pet — adopting a new one will replace them.
+      </div>}
       <div className="adopt-grid grid grid-cols-3 gap-2">
         {petCatalogue.map(function(p){
-          var canAfford=kid.balance>=p.cost;
+          var baseCost=p.cost;
+          var finalCost=hasPenalty?Math.ceil(baseCost*1.5):baseCost;
+          var canAfford=kid.balance>=finalCost;
           var chain=p.stages.slice(1).map(function(s){return s.name;}).join(' → ');
           return (
             <div key={p.id} className={"adopt-card flex flex-col items-center p-3 rounded-2xl border-2 relative transition "+(canAfford?p.rare?"border-purple-300 bg-purple-50 hover:border-purple-400":"border-pink-200 bg-pink-50 hover:border-pink-400":"border-gray-100 bg-gray-50 opacity-50")}>
               {p.rare&&<span className="absolute top-1.5 right-1.5 text-xs">✨</span>}
               <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={80} face="happy" stageIdx={1}/></span>
               <span className="adopt-name font-bold text-gray-700 text-xs text-center leading-tight mt-1">{chain}</span>
-              <span className={"adopt-cost text-xs font-black mt-1 "+(p.rare?"text-purple-600":"text-pink-600")}>{p.cost} pts</span>
-              <button disabled={!canAfford} onClick={function(){onAdopt(p);}}
+              <span className={"adopt-cost text-xs font-black mt-1 "+(p.rare?"text-purple-600":"text-pink-600")}>
+                {finalCost} pts{hasPenalty&&<span className="text-gray-400 line-through font-normal ml-1">{baseCost}</span>}
+              </span>
+              <button disabled={!canAfford} onClick={function(){setPendingPet(p);}}
                 className={"adopt-btn mt-2 w-full py-1.5 rounded-xl text-xs font-bold transition "+(canAfford?p.rare?"bg-purple-500 hover:bg-purple-600 text-white":"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
-                {canAfford?"Adopt 🐾":"Need more pts"}
+                {canAfford?"Choose 🐾":"Need more pts"}
               </button>
             </div>
           );
@@ -1719,7 +1767,7 @@ function TabPanel({kid, kidTab, setKidTab, shopItems, petCatalogue, petConfig, m
   if(kidTab==='home') return (
     <div>
       <IdentityBanner kid={kid} c={c}/>
-      <PetYard kids={kids} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onFeed={H.onFeed} height={280}/>
+      <PetYard kids={kids} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onFeed={H.onFeed} height={360}/>
       {kids&&!kids.some(function(k){return !!k.pet;})&&<p className="text-center text-gray-400 text-sm py-4">No pets yet — earn points and visit Adopt! 🐾</p>}
     </div>
   );
@@ -1954,14 +2002,15 @@ function App() {
     showToast('Undone: '+task.title);
   }
 
-  async function handleAdopt(pet) {
+  async function handleAdopt(pet, petName) {
     var customCost = petCosts[pet.id];
     var cost = customCost !== undefined ? customCost : pet.cost;
-    var d=await callAPI('adopt_pet',{kidId:selId,speciesId:pet.id,cost:cost});
+    var d=await callAPI('adopt_pet',{kidId:selId,speciesId:pet.id,cost:cost,petName:petName||null});
     if(d && d.error){ showToast(d.error||'Could not adopt','error'); return; }
     applyState(d);
     setKidTab('pet');
-    showToast((kid ? kid.name : '')+" adopted a "+pet.name+" egg! 🥚 Feed it to hatch!");
+    var adoptedName=petName?'"'+petName+'"':pet.name;
+    showToast((kid ? kid.name : '')+" adopted "+adoptedName+"! 🥚 Feed it to hatch!");
   }
 
   async function handleBuy(item) {

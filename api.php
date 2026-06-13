@@ -103,8 +103,9 @@ function initDB(PDO $db): void {
         );
     ");
     // Migrate pets tables created before the petting / digital-pet features
-    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT"];
+    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT"];
     foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
+    try { $db->exec("ALTER TABLE kids ADD COLUMN adoption_penalty INTEGER DEFAULT 0"); } catch (Exception $e) {}
     $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
     if ($count == 0) seedData($db);
     $rc = $db->query("SELECT COUNT(*) as c FROM rewards")->fetch()['c'];
@@ -191,6 +192,7 @@ function getState(PDO $db): array {
             'id'=>$kid['id'], 'name'=>$kid['name'], 'emoji'=>$kid['emoji'], 'color'=>$kid['color'],
             'balance'=>(int)$kid['balance'], 'startingBalance'=>(int)$kid['starting_balance'],
             'todayEarned'=>(int)$kid['today_earned'],
+            'adoptionPenalty'=>(bool)($kid['adoption_penalty']??false),
             'tasks'=>$tasks,
             'completedToday'=>array_column($cs->fetchAll(),'task_id'),
             'pet'=>$petRow ? [
@@ -205,6 +207,7 @@ function getState(PDO $db): array {
                 'lastBath'=>$lastBath,
                 'daysSinceBath'=>$daysSinceBath,
                 'homeItem'=>$petRow['home_item'],
+                'petName'=>$petRow['pet_name'] ?: null,
             ] : null,
         ];
     }
@@ -278,10 +281,18 @@ function newDay(PDO $db): array {
         $newHunger = max(0, (int)$pet['hunger'] - $hungerDecay);
         $newHungerLowDays = $newHunger < 20 ? (int)$pet['hunger_low_days'] + 1 : 0;
         // Starvation: hunger below 20% for 3 consecutive days
-        if ($newHungerLowDays >= 3) { $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]); continue; }
+        if ($newHungerLowDays >= 3) {
+            $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]);
+            $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
+            continue;
+        }
         // Bath: pet dies if more than 10 days pass without a bath
         $lastBath = (int)$pet['last_bath'];
-        if ($lastBath > 0 && ($now - $lastBath) > 864000) { $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]); continue; }
+        if ($lastBath > 0 && ($now - $lastBath) > 864000) {
+            $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]);
+            $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
+            continue;
+        }
         $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0, hunger_low_days=? WHERE kid_id=?")
            ->execute([$newHunger, $newHungerLowDays, $pet['kid_id']]);
     }
@@ -359,13 +370,18 @@ function updatePetConfig(PDO $db, array $b): array {
 
 function adoptPet(PDO $db, array $b): array {
     $kidId=$b['kidId']??''; $speciesId=$b['speciesId']??''; $cost=(int)($b['cost']??0);
-    $kid=$db->prepare("SELECT balance FROM kids WHERE id=?"); $kid->execute([$kidId]);
+    $petName=trim($b['petName']??''); if(!$petName) $petName=null;
+    $kid=$db->prepare("SELECT * FROM kids WHERE id=?"); $kid->execute([$kidId]);
     $kd=$kid->fetch();
-    if (!$kd||$kd['balance']<$cost) return err('Insufficient balance');
+    if (!$kd) return err('Kid not found');
+    // Apply 1.5× death penalty if a previous pet died
+    $penalty=(int)($kd['adoption_penalty']??0);
+    $finalCost=$penalty?(int)ceil($cost*1.5):$cost;
+    if ($kd['balance']<$finalCost) return err('Insufficient balance — you need '.$finalCost.' pts'.($penalty?' (1.5× death penalty)':''));
     $db->beginTransaction();
-    $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
+    $db->prepare("UPDATE kids SET balance=balance-?, adoption_penalty=0 WHERE id=?")->execute([$finalCost,$kidId]);
     // last_bath starts as adoption time so the first bath is due 10 days after adoption
-    $db->prepare("INSERT OR REPLACE INTO pets (kid_id,species_id,mood,growth_points,last_bath,hunger_low_days,home_item) VALUES (?,?,100,0,?,0,NULL)")->execute([$kidId,$speciesId,time()]);
+    $db->prepare("INSERT OR REPLACE INTO pets (kid_id,species_id,mood,growth_points,last_bath,hunger_low_days,home_item,pet_name) VALUES (?,?,100,0,?,0,NULL,?)")->execute([$kidId,$speciesId,time(),$petName]);
     $db->commit();
     return getState($db);
 }
