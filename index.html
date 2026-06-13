@@ -71,7 +71,7 @@
       .chk-btn{width:44px!important;height:44px!important;border-radius:14px!important;font-size:1.15rem!important}
       .yard-btn{font-size:1.05rem!important;min-width:42px;min-height:42px;padding:6px 10px!important}
       /* taller play area + bigger feed popover */
-      .pet-yard{height:230px!important;border-radius:22px!important}
+      .pet-yard{height:250px!important;border-radius:22px!important}
       .feed-pop{width:13.5rem!important;padding:10px!important}
       .feed-pop button{min-height:46px!important;font-size:.9rem!important;border-radius:12px!important}
       .feed-pop .text-xs{font-size:.85rem!important}
@@ -279,8 +279,8 @@ function PetSVG({speciesId, size, face, walking}) {
         </radialGradient>
       </defs>
       <ellipse cx="54" cy="90" rx="20" ry="4" fill="rgba(0,0,0,.12)"/>
-      <g className="p-fin svgp"><path d="M32 55 L12 40 Q17 55 12 70 Z" fill={A.dark}/></g>
-      <ellipse cx="56" cy="55" rx="25" ry="17" fill={'url(#'+gid+'b)'}/>
+      <g className="p-fin svgp"><path d="M32 55 L12 40 Q17 55 12 70 Z" fill={A.dark} stroke={A.dark} strokeWidth="1"/></g>
+      <ellipse cx="56" cy="55" rx="25" ry="17" fill={'url(#'+gid+'b)'} stroke={A.dark} strokeWidth="2.5"/>
       <path d="M48 39 Q56 27 66 39 Z" fill={A.dark}/>
       <g className="p-fin svgp" style={{animationDelay:'.3s'}}><ellipse cx="52" cy="62" rx="7" ry="4.5" fill={A.dark} transform="rotate(25 52 62)"/></g>
       <ellipse cx="66" cy="59" rx="3" ry="2" fill={A.cheek} opacity=".8"/>
@@ -350,7 +350,7 @@ function PetSVG({speciesId, size, face, walking}) {
 
       {/* body & belly */}
       <g className="p-breathe svgp">
-        <ellipse cx="50" cy="66" rx="24" ry="20" fill={'url(#'+gid+'b)'}/>
+        <ellipse cx="50" cy="66" rx="24" ry="20" fill={'url(#'+gid+'b)'} stroke={A.dark} strokeWidth="2.5"/>
         {speciesId!=='turtle'&&<ellipse cx="50" cy="71" rx="14" ry="11" fill={A.belly}/>}
         {speciesId==='turtle'&&<g>
           <ellipse cx="50" cy="68" rx="23" ry="17" fill={'url(#'+gid+'s)'}/>
@@ -371,7 +371,7 @@ function PetSVG({speciesId, size, face, walking}) {
       <g className={walking?"p-foot-b svgp":""}><ellipse cx="61" cy="87" rx="6.5" ry="4" fill={A.dark}/></g>
 
       {/* head */}
-      <circle cx="50" cy="36" r="20" fill={'url(#'+gid+'h)'}/>
+      <circle cx="50" cy="36" r="20" fill={'url(#'+gid+'h)'} stroke={A.dark} strokeWidth="2.5"/>
       {speciesId==='doggy'&&<g><ellipse cx="50" cy="45" rx="8.5" ry="6.5" fill={A.light}/><ellipse cx="50" cy="41.5" rx="3" ry="2.4" fill="#1f2937"/></g>}
       {speciesId==='kitten'&&<g stroke="#9ca3af" strokeWidth="1" strokeLinecap="round">
         <path d="M28 39 L39 40.5"/><path d="M28 44 L39 43"/><path d="M72 39 L61 40.5"/><path d="M72 44 L61 43"/>
@@ -398,7 +398,7 @@ function PetArt({pet, size}) {
   var stage=info.stage,stageIdx=info.stageIdx;
   var isAdult=stageIdx===sp.stages.length-1, isRare=sp.rare, isEgg=stageIdx===0;
   var nearHatch=isEgg&&info.progressPct>=60;
-  var cs=size==="lg"?110:size==="sm"?60:80;
+  var cs=size==="xl"?180:size==="lg"?140:size==="sm"?64:96;
   return (
     <div style={{position:"relative",width:cs,height:cs}}>
       <div style={{position:"absolute",inset:0,borderRadius:"50%",background:"radial-gradient(circle at 40% 40%,"+stage.bg+","+(isRare?"#e9d5ff":"#f9fafb")+")",boxShadow:stage.glow||(isAdult?"0 4px 20px rgba(0,0,0,.1)":"none")}}/>
@@ -419,7 +419,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
   var pet=kid.pet, sp=getSpecies(pet.id), info=getStageInfo(sp,pet.growthPoints||0);
   var isEgg=info.stageIdx===0;
   var isAdult=info.stageIdx===sp.stages.length-1;
-  var fs=isEgg?34:info.stageIdx===1?40:info.stageIdx===2?50:60;
+  var fs=isEgg?46:info.stageIdx===1?56:info.stageIdx===2?70:84;
   var sleeping=!!pet.sleeping;
   var hungry=pet.hunger<30, tired=pet.fatigue>75, sluggish=pet.fatigue>55||pet.hunger<40;
 
@@ -605,11 +605,11 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos}) {
 }
 
 // ── Pet Yard (home page habitat — all adopted pets live here) ──────────────────
-function PetYard({kids, shopItems, petConfig, onAction, onFeed}) {
+function PetYard({kids, shopItems, petConfig, onAction, onFeed, height}) {
   var withPets=kids.filter(function(k){return !!k.pet;});
   if(!withPets.length) return null;
   return (
-    <div className="pet-yard rounded-2xl border-2 border-green-300 mb-4 relative shadow-md" style={{height:205}}>
+    <div className="pet-yard rounded-2xl border-2 border-green-300 mb-4 relative shadow-md" style={{height:height||260}}>
       {/* clipped scenery layer — pets & popovers live outside it so they aren't cut off */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{background:'linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 48%,#86efac 48%,#4ade80 100%)'}}>
         <span style={{position:'absolute',top:8,right:14,fontSize:26}}>☀️</span>
@@ -782,7 +782,7 @@ function AdoptPanel({kid, petCatalogue, onAdopt}) {
           return (
             <div key={p.id} className={"adopt-card flex flex-col items-center p-3 rounded-2xl border-2 relative transition "+(canAfford?p.rare?"border-purple-300 bg-purple-50 hover:border-purple-400":"border-pink-200 bg-pink-50 hover:border-pink-400":"border-gray-100 bg-gray-50 opacity-50")}>
               {p.rare&&<span className="absolute top-1.5 right-1.5 text-xs">✨</span>}
-              <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={52} face="happy"/></span>
+              <span className="adopt-art my-1"><PetSVG speciesId={p.id} size={68} face="happy"/></span>
               <span className="adopt-name font-bold text-gray-700 text-xs text-center leading-tight">{p.name}</span>
               <span className="adopt-final text-xs text-gray-400 text-center">→ {p.stages[p.stages.length-1].name}</span>
               <span className={"adopt-cost text-xs font-black mt-1 "+(p.rare?"text-purple-600":"text-pink-600")}>{p.cost} pts</span>
@@ -1275,6 +1275,252 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, verifiedPin, hasP
   );
 }
 
+// ── Responsive: detect phone vs desktop so we can render purpose-built layouts ──
+function useIsMobile() {
+  var get = function(){ return typeof window!=='undefined' && window.matchMedia('(max-width:768px)').matches; };
+  var s = useState(get); var v = s[0]; var set = s[1];
+  useEffect(function(){
+    var mq = window.matchMedia('(max-width:768px)');
+    var handler = function(){ set(mq.matches); };
+    mq.addEventListener ? mq.addEventListener('change',handler) : mq.addListener(handler);
+    return function(){ mq.removeEventListener ? mq.removeEventListener('change',handler) : mq.removeListener(handler); };
+  },[]);
+  return v;
+}
+
+var KID_TABS = [
+  {k:'tasks', ico:'✅', label:'Tasks'},
+  {k:'pet',   ico:'🐾', label:'My Pet'},
+  {k:'adopt', ico:'🌟', label:'Adopt'},
+  {k:'shop',  ico:'🛒', label:'Shop'},
+];
+
+// ── Shared building blocks (used by BOTH the mobile and desktop layouts) ────────
+function KidCardGrid({kids, selId, setSelId, setKidTab, className}) {
+  return (
+    <div className={className}>
+      {kids.map(function(k){
+        var kc=C[k.color]||C.blue, sel=k.id===selId;
+        var max=maxDailyPts(k), pct=max>0?Math.min(100,Math.round(k.todayEarned/max*100)):0;
+        var petSp=k.pet?getSpecies(k.pet.id):null;
+        var petLow=k.pet&&k.pet.mood<30;
+        var doneCt=(k.completedToday||[]).length;
+        var totalCt=(k.tasks.basic||[]).length+(k.tasks.bonus||[]).length;
+        return (
+          <button key={k.id} onClick={function(){setSelId(k.id);setKidTab('tasks');}}
+            className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm")}>
+            <div className="kid-card-head flex items-center gap-2 mb-2">
+              <span className="kid-card-emoji text-2xl">{k.emoji}</span>
+              <span className="kid-card-name font-black text-gray-800 text-sm truncate">{k.name}</span>
+              {k.pet&&<span className="text-lg ml-auto flex-shrink-0" title={(petSp?petSp.name:"")+(petLow?" — needs food":"")}>{petSp ? petSp.emoji : ""}{petLow&&"🔴"}</span>}
+            </div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-gray-500">Today</span>
+              <span className={"font-bold "+(k.todayEarned>=0?"text-green-600":"text-red-500")}>{k.todayEarned>=0?"+":""}{k.todayEarned} pts</span>
+            </div>
+            {max>0&&<div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5"><div className={"h-1.5 rounded-full transition-all "+kc.prog} style={{width:pct+"%"}}/></div>}
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">{doneCt}/{totalCt} tasks</span>
+              <span className={"font-bold "+kc.txt}>{k.balance} pts</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function IdentityBanner({kid, c}) {
+  if(!kid) return null;
+  return (
+    <div className={"identity-banner rounded-2xl border-2 "+c.border+" "+c.bg+" px-4 py-3 mb-4 flex items-center gap-3"}>
+      <span className="ib-emoji text-3xl">{kid.emoji}</span>
+      <div className="flex-1">
+        <p className="ib-name font-black text-gray-800 text-base">Hi {kid.name}!</p>
+        <p className="ib-hint text-xs text-gray-500">Tap each task when you've done it 👇</p>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="ib-pts-label text-xs text-gray-400">Today's pts</p>
+        <p className={"ib-pts text-2xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatsStrip({kid, c}) {
+  return (
+    <div className="stats-strip grid grid-cols-2 gap-2 mb-4">
+      <div className={"stat-box "+c.bg+" rounded-xl p-3 text-center"}>
+        <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Today</p>
+        <p className={"stat-num text-3xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
+        <p className="stat-unit text-xs text-gray-400">pts earned</p>
+      </div>
+      <div className="stat-box bg-indigo-50 rounded-xl p-3 text-center">
+        <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Balance</p>
+        <p className={"stat-num text-3xl font-black "+(kid.balance>=0?"text-indigo-600":"text-red-500")}>{kid.balance}</p>
+        <p className="stat-unit text-xs text-gray-400">pts total</p>
+      </div>
+    </div>
+  );
+}
+
+function ProgressLine({kid}) {
+  if(maxDailyPts(kid)<=0) return null;
+  return (
+    <p className="text-xs text-center text-gray-400 -mt-2 mb-4">
+      {(kid.completedToday||[]).length} of {(kid.tasks.basic||[]).length+(kid.tasks.bonus||[]).length} tasks · max today: <span className="font-bold">{maxDailyPts(kid)} pts</span>
+    </p>
+  );
+}
+
+// Active tab body — shared between layouts (stats strip is rendered by the layout)
+function TabPanel({kid, kidTab, setKidTab, shopItems, petCatalogue, petConfig, minCost, celebrating, H}) {
+  if(kidTab==='tasks') return <TaskSection kid={kid} onComplete={H.onComplete} onUndo={H.onUndo} celebratingTasks={celebrating}/>;
+  if(kidTab==='pet') return (
+    kid.pet
+      ? <PetCard kid={kid} pet={kid.pet} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onShop={function(){setKidTab('shop');}}/>
+      : <div className="text-center py-8">
+          <p className="text-5xl mb-3">🐾</p>
+          <p className="text-gray-500 text-sm mb-1">No pet yet!</p>
+          <p className="text-gray-400 text-xs mb-5">Earn points and head to Adopt to get one.</p>
+          <button onClick={function(){setKidTab('adopt');}} disabled={kid.balance<minCost}
+            className={"px-6 py-2.5 rounded-xl font-bold text-sm transition "+(kid.balance>=minCost?"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+            {kid.balance>=minCost?"Adopt a Pet 🐾":"Need "+minCost+"+ pts to adopt"}
+          </button>
+        </div>
+  );
+  if(kidTab==='adopt') return <AdoptPanel kid={kid} petCatalogue={petCatalogue} onAdopt={H.onAdopt}/>;
+  if(kidTab==='shop')  return <ShopPanel kid={kid} shopItems={shopItems} onBuy={H.onBuy}/>;
+  return null;
+}
+
+function EmptyKids() {
+  return (
+    <div className="text-center py-16 text-gray-400">
+      <p className="text-4xl mb-3">👨‍👩‍👧‍👦</p>
+      <p className="font-bold">No kids yet — open Parent Admin to add some!</p>
+    </div>
+  );
+}
+
+// ── MOBILE LAYOUT — kid-first phone experience with a big thumbable bottom nav ──
+function MobileLayout(props) {
+  var kids=props.kids, kid=props.kid, c=props.c, selId=props.selId, setSelId=props.setSelId;
+  var kidTab=props.kidTab, setKidTab=props.setKidTab, petMoodLow=props.petMoodLow;
+  var H=props.H;
+  return (
+    <div className="app-root max-w-2xl mx-auto">
+      {/* Compact header — title shrinks, Parents becomes a corner pill */}
+      <div className="app-header flex justify-between items-center mb-4">
+        <div className="app-title-wrap">
+          <h1 className="app-title text-2xl font-black text-gray-800">🌟 Family Habit Tracker</h1>
+          <p className="app-subtitle text-gray-400 text-xs mt-0.5">Earn points · Adopt pets · Build great habits</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={props.loadState} className="icon-btn text-gray-400 hover:text-gray-600 text-xl" title="Refresh">🔄</button>
+          <button onClick={props.openAdmin} className="parents-btn tap-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">👩‍💻 Parents</button>
+        </div>
+      </div>
+
+      <KidCardGrid kids={kids} selId={selId} setSelId={setSelId} setKidTab={setKidTab}
+        className={"kid-grid grid gap-3 mb-4 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-2 sm:grid-cols-4")}/>
+
+      <IdentityBanner kid={kid} c={c}/>
+      <PetYard kids={kids} shopItems={props.shopItems} petConfig={props.petConfig} onAction={H.onAction} onFeed={H.onFeed}/>
+
+      {kid&&(
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+          {/* Fixed bottom navigation (styled by the ≤768px media query) */}
+          <div className="kid-tabs flex border-b bg-gray-50">
+            {KID_TABS.map(function(item){
+              var label=item.k==='pet'?item.label+(petMoodLow?' 🔴':''):item.label;
+              return (
+                <button key={item.k} onClick={function(){setKidTab(item.k);}}
+                  className={"kid-tab-btn flex-1 py-3 text-xs font-bold transition border-b-2 "+(kidTab===item.k?"kid-tab-active border-indigo-500 text-indigo-600 bg-white":"border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100")}>
+                  <span className="tab-ico">{item.ico}</span><span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="p-4">
+            <StatsStrip kid={kid} c={c}/>
+            <ProgressLine kid={kid}/>
+            <TabPanel kid={kid} kidTab={kidTab} setKidTab={setKidTab} shopItems={props.shopItems}
+              petCatalogue={props.petCatalogue} petConfig={props.petConfig} minCost={props.minCost}
+              celebrating={props.celebrating} H={H}/>
+          </div>
+        </div>
+      )}
+
+      {!kid&&<EmptyKids/>}
+    </div>
+  );
+}
+
+// ── DESKTOP LAYOUT — full-width version: roomy header, large habitat, side nav ──
+function DesktopLayout(props) {
+  var kids=props.kids, kid=props.kid, c=props.c, selId=props.selId, setSelId=props.setSelId;
+  var kidTab=props.kidTab, setKidTab=props.setKidTab, petMoodLow=props.petMoodLow;
+  var H=props.H;
+  return (
+    <div className="max-w-6xl mx-auto px-4 pb-8">
+      {/* Roomy header with full title + subtitle */}
+      <div className="flex justify-between items-center mb-6 pt-2">
+        <div>
+          <h1 className="text-3xl font-black text-gray-800">🌟 Family Habit Tracker</h1>
+          <p className="text-gray-400 text-sm mt-1">Earn points · Adopt pets · Build great habits</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={props.loadState} className="text-gray-400 hover:text-gray-600 text-2xl transition" title="Refresh">🔄</button>
+          <button onClick={props.openAdmin} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow transition">👩‍💻 Parents</button>
+        </div>
+      </div>
+
+      {/* Kid selector — single roomy row */}
+      <KidCardGrid kids={kids} selId={selId} setSelId={setSelId} setKidTab={setKidTab}
+        className={"grid gap-4 mb-5 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-4")}/>
+
+      {/* Big habitat showcase — pets get center stage on the wide screen */}
+      <PetYard kids={kids} shopItems={props.shopItems} petConfig={props.petConfig} onAction={H.onAction} onFeed={H.onFeed} height={320}/>
+
+      {kid&&(
+        <div className="grid grid-cols-3 gap-5 items-start">
+          {/* Left: identity + at-a-glance stats */}
+          <aside className="col-span-1 space-y-4">
+            <IdentityBanner kid={kid} c={c}/>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
+              <StatsStrip kid={kid} c={c}/>
+              <ProgressLine kid={kid}/>
+            </div>
+          </aside>
+
+          {/* Right: main panel with a vertical side-nav (desktop-native navigation) */}
+          <div className="col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 flex min-h-[460px]">
+            <nav className="w-48 flex-shrink-0 border-r bg-gray-50 p-3 space-y-1.5">
+              {KID_TABS.map(function(item){
+                var label=item.k==='pet'?item.label+(petMoodLow?' 🔴':''):item.label;
+                return (
+                  <button key={item.k} onClick={function(){setKidTab(item.k);}}
+                    className={"w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-left "+(kidTab===item.k?"bg-indigo-600 text-white shadow":"text-gray-500 hover:bg-gray-200")}>
+                    <span className="text-xl">{item.ico}</span><span>{label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="flex-1 p-6 overflow-y-auto">
+              <TabPanel kid={kid} kidTab={kidTab} setKidTab={setKidTab} shopItems={props.shopItems}
+                petCatalogue={props.petCatalogue} petConfig={props.petConfig} minCost={props.minCost}
+                celebrating={props.celebrating} H={H}/>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!kid&&<EmptyKids/>}
+    </div>
+  );
+}
+
 // ── App ────────────────────────────────────────────────────────────────────────
 function App() {
   var kidsState = useState([]);
@@ -1302,6 +1548,7 @@ function App() {
   var celebState = useState(new Set());
   var celebrating = celebState[0]; var setCelebr = celebState[1];
   var firstLoad = useRef(true);
+  var isMobile = useIsMobile();
 
   // PIN persisted in sessionStorage
   var readStoredPin = function() { try { return sessionStorage.getItem('habitAdminPin')||''; } catch(e) { return ''; } };
@@ -1494,20 +1741,21 @@ function App() {
 
   var petMoodLow = kid && kid.pet && kid.pet.mood < 30;
 
-  return (
-    <div className="app-root max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="app-header flex justify-between items-center mb-4">
-        <div className="app-title-wrap">
-          <h1 className="app-title text-2xl font-black text-gray-800">🌟 Family Habit Tracker</h1>
-          <p className="app-subtitle text-gray-400 text-xs mt-0.5">Earn points · Adopt pets · Build great habits</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={loadState} className="icon-btn text-gray-400 hover:text-gray-600 text-xl" title="Refresh">🔄</button>
-          <button onClick={openAdmin} className="parents-btn tap-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">👩‍💻 Parents</button>
-        </div>
-      </div>
+  // Shared handlers — passed to whichever layout renders, so both run identical logic
+  var H = {
+    onComplete: handleComplete, onUndo: handleUndo, onAdopt: handleAdopt,
+    onBuy: handleBuy, onAction: handlePetAction, onFeed: handleFeed,
+  };
+  var layoutProps = {
+    kids:kids, kid:kid, c:c, selId:selId, setSelId:setSelId,
+    kidTab:kidTab, setKidTab:setKidTab, petMoodLow:petMoodLow,
+    shopItems:shopItems, petCatalogue:petCatalogue, petConfig:petConfig,
+    minCost:minCost, celebrating:celebrating,
+    loadState:loadState, openAdmin:openAdmin, H:H,
+  };
 
+  return (
+    <div>
       {/* Toast notification */}
       {toast&&(
         <div className={"app-toast fixed top-4 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full shadow-2xl text-sm font-bold z-50 "+(toast.type==='error'?"bg-red-600":"bg-gray-800")+" text-white"}>
@@ -1515,7 +1763,7 @@ function App() {
         </div>
       )}
 
-      {/* Modals */}
+      {/* Modals (shared across both layouts) */}
       {showPinModal&&(
         <PinModal hasPin={hasPin}
           onVerified={function(pin){setVerifiedPin(pin);setSPM(false);setShowAdmin(true);}}
@@ -1534,125 +1782,8 @@ function App() {
           onClose={function(){setShowAdmin(false);loadState();}}/>
       )}
 
-      {/* ── Kid Selector Cards ── */}
-      <div className={"kid-grid grid gap-3 mb-4 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-2 sm:grid-cols-4")}>
-        {kids.map(function(k){
-          var kc=C[k.color]||C.blue, sel=k.id===selId;
-          var max=maxDailyPts(k), pct=max>0?Math.min(100,Math.round(k.todayEarned/max*100)):0;
-          var petSp=k.pet?getSpecies(k.pet.id):null;
-          var petLow=k.pet&&k.pet.mood<30;
-          var doneCt=(k.completedToday||[]).length;
-          var totalCt=(k.tasks.basic||[]).length+(k.tasks.bonus||[]).length;
-          return (
-            <button key={k.id} onClick={function(){setSelId(k.id);setKidTab('tasks');}}
-              className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm")}>
-              <div className="kid-card-head flex items-center gap-2 mb-2">
-                <span className="kid-card-emoji text-2xl">{k.emoji}</span>
-                <span className="kid-card-name font-black text-gray-800 text-sm truncate">{k.name}</span>
-                {k.pet&&<span className="text-lg ml-auto flex-shrink-0" title={(petSp?petSp.name:"")+(petLow?" — needs food":"")}>{petSp ? petSp.emoji : ""}{petLow&&"🔴"}</span>}
-              </div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-500">Today</span>
-                <span className={"font-bold "+(k.todayEarned>=0?"text-green-600":"text-red-500")}>{k.todayEarned>=0?"+":""}{k.todayEarned} pts</span>
-              </div>
-              {max>0&&<div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5"><div className={"h-1.5 rounded-full transition-all "+kc.prog} style={{width:pct+"%"}}/></div>}
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">{doneCt}/{totalCt} tasks</span>
-                <span className={"font-bold "+kc.txt}>{k.balance} pts</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Identity Banner ── */}
-      {kid&&(
-        <div className={"identity-banner rounded-2xl border-2 "+c.border+" "+c.bg+" px-4 py-3 mb-4 flex items-center gap-3"}>
-          <span className="ib-emoji text-3xl">{kid.emoji}</span>
-          <div className="flex-1">
-            <p className="ib-name font-black text-gray-800 text-base">Hi {kid.name}!</p>
-            <p className="ib-hint text-xs text-gray-500">Tap each task when you've done it 👇</p>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <p className="ib-pts-label text-xs text-gray-400">Today's pts</p>
-            <p className={"ib-pts text-2xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Pet Yard (all adopted pets, alive & interactive) ── */}
-      <PetYard kids={kids} shopItems={shopItems} petConfig={petConfig} onAction={handlePetAction} onFeed={handleFeed}/>
-
-      {/* ── Main Panel with tabs ── */}
-      {kid&&(
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-          {/* 4-tab navigation */}
-          <div className="kid-tabs flex border-b bg-gray-50">
-            {[
-              {k:'tasks', ico:'✅', label:'Tasks'},
-              {k:'pet',   ico:'🐾', label:'My Pet'+(petMoodLow?' 🔴':'')},
-              {k:'adopt', ico:'🌟', label:'Adopt'},
-              {k:'shop',  ico:'🛒', label:'Shop'},
-            ].map(function(item){
-              var k=item.k, label=item.label;
-              return (
-              <button key={k} onClick={function(){setKidTab(k);}}
-                className={"kid-tab-btn flex-1 py-3 text-xs font-bold transition border-b-2 "+(kidTab===k?"kid-tab-active border-indigo-500 text-indigo-600 bg-white":"border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100")}>
-                <span className="tab-ico">{item.ico}</span><span>{label}</span>
-              </button>
-              );
-            })}
-          </div>
-
-          <div className="p-4">
-            {/* Stats strip */}
-            <div className="stats-strip grid grid-cols-2 gap-2 mb-4">
-              <div className={"stat-box "+c.bg+" rounded-xl p-3 text-center"}>
-                <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Today</p>
-                <p className={"stat-num text-3xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
-                <p className="stat-unit text-xs text-gray-400">pts earned</p>
-              </div>
-              <div className="stat-box bg-indigo-50 rounded-xl p-3 text-center">
-                <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Balance</p>
-                <p className={"stat-num text-3xl font-black "+(kid.balance>=0?"text-indigo-600":"text-red-500")}>{kid.balance}</p>
-                <p className="stat-unit text-xs text-gray-400">pts total</p>
-              </div>
-            </div>
-            {maxDailyPts(kid)>0&&(
-              <p className="text-xs text-center text-gray-400 -mt-2 mb-4">
-                {(kid.completedToday||[]).length} of {(kid.tasks.basic||[]).length+(kid.tasks.bonus||[]).length} tasks · max today: <span className="font-bold">{maxDailyPts(kid)} pts</span>
-              </p>
-            )}
-
-            {/* Tab content */}
-            {kidTab==='tasks'&&<TaskSection kid={kid} onComplete={handleComplete} onUndo={handleUndo} celebratingTasks={celebrating}/>}
-
-            {kidTab==='pet'&&(
-              kid.pet
-                ? <PetCard kid={kid} pet={kid.pet} shopItems={shopItems} petConfig={petConfig} onAction={handlePetAction} onShop={function(){setKidTab('shop');}}/>
-                : <div className="text-center py-8">
-                    <p className="text-5xl mb-3">🐾</p>
-                    <p className="text-gray-500 text-sm mb-1">No pet yet!</p>
-                    <p className="text-gray-400 text-xs mb-5">Earn points and head to Adopt to get one.</p>
-                    <button onClick={function(){setKidTab('adopt');}} disabled={kid.balance<minCost}
-                      className={"px-6 py-2.5 rounded-xl font-bold text-sm transition "+(kid.balance>=minCost?"bg-pink-500 hover:bg-pink-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
-                      {kid.balance>=minCost?"Adopt a Pet 🐾":"Need "+minCost+"+ pts to adopt"}
-                    </button>
-                  </div>
-            )}
-
-            {kidTab==='adopt'&&<AdoptPanel kid={kid} petCatalogue={petCatalogue} onAdopt={handleAdopt}/>}
-            {kidTab==='shop'&&<ShopPanel kid={kid} shopItems={shopItems} onBuy={handleBuy}/>}
-          </div>
-        </div>
-      )}
-
-      {!kid&&!loading&&(
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">👨‍👩‍👧‍👦</p>
-          <p className="font-bold">No kids yet — open Parent Admin to add some!</p>
-        </div>
-      )}
+      {/* Render the layout purpose-built for the device — both share the state above */}
+      {isMobile ? <MobileLayout {...layoutProps}/> : <DesktopLayout {...layoutProps}/>}
     </div>
   );
 }
