@@ -872,13 +872,22 @@ function PinModal({hasPin, onVerified, onClose}) {
   );
 }
 
-// ── Admin Modal (5 tabs: Today / Kids / Tasks / Shop / Settings) ───────────────
-function AdminModal({kids, shopItems, petCatalogue, petConfig, verifiedPin, hasPin,
+// ── Admin Modal (Today / Kids / Tasks / Shop / Rewards / Settings) ─────────────
+function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redemptions, verifiedPin, hasPin,
                      onUpdateKid, onAddKid, onDeleteKid, onSaveTask, onDeleteTask,
-                     onUpdateShop, onUpdatePetCost, onUpdatePetConfig, onNewDay, onChangePin,
-                     onComplete, onUndo, onCopyTasks, onClose}) {
+                     onUpdateShop, onUpdatePetCost, onUpdatePetConfig,
+                     onAddReward, onUpdateReward, onDeleteReward, onDeleteRedemption,
+                     onNewDay, onChangePin, onComplete, onUndo, onCopyTasks, onClose}) {
   var tabState = useState("today");
   var tab = tabState[0]; var setTab = tabState[1];
+  var nrnState = useState("");
+  var newRewardName = nrnState[0]; var setNewRewardName = nrnState[1];
+  var nreState = useState("🎁");
+  var newRewardEmoji = nreState[0]; var setNewRewardEmoji = nreState[1];
+  var nrcState = useState("");
+  var newRewardCost = nrcState[0]; var setNewRewardCost = nrcState[1];
+  var cdrState = useState(null);
+  var confirmDelReward = cdrState[0]; var setCDR = cdrState[1];
   var ekState = useState(kids[0] ? kids[0].id : "");
   var editKidId = ekState[0]; var setEditKidId = ekState[1];
   var nnState = useState("");
@@ -958,6 +967,7 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, verifiedPin, hasP
         <Tb k="kids"     label="👨‍👩‍👧‍👦 Kids"/>
         <Tb k="tasks"    label="✅ Tasks"/>
         <Tb k="shop"     label="🛒 Shop & Pets"/>
+        <Tb k="rewards"  label="🎁 Rewards"/>
         <Tb k="settings" label="⚙️ Settings"/>
         <div className="ml-auto">
           {!confirmNewDay
@@ -1252,6 +1262,83 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, verifiedPin, hasP
         </div>
       </div>}
 
+      {/* ── REWARDS TAB ── */}
+      {tab==="rewards"&&<div>
+        <p className="text-xs text-gray-400 mb-4">Create real-world rewards kids can redeem with their points (movie night, game time…). Click away from a field to save.</p>
+        <div className="space-y-2 mb-5">
+          {(rewards||[]).map(function(rw){
+            var isDel=confirmDelReward===rw.id;
+            return (
+              <div key={rw.id}>
+                {!isDel?(
+                  <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border flex-wrap">
+                    <input defaultValue={rw.emoji} key={rw.id+'e'}
+                      onBlur={function(e){onUpdateReward(rw.id,'emoji',e.target.value);}}
+                      className="w-12 border border-gray-200 rounded-lg px-1 py-1.5 text-lg text-center outline-none focus:ring-2 focus:ring-amber-300"/>
+                    <input defaultValue={rw.name} key={rw.id+'n'}
+                      onBlur={function(e){onUpdateReward(rw.id,'name',e.target.value);}}
+                      className="flex-1 min-w-[120px] border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-300"/>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="1" defaultValue={rw.cost} key={rw.id+'c'}
+                        onBlur={function(e){onUpdateReward(rw.id,'cost',parseInt(e.target.value)||1);}}
+                        className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-amber-300"/>
+                      <span className="text-xs text-gray-400">pts</span>
+                    </div>
+                    <button onClick={function(){setCDR(rw.id);}} className="text-red-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
+                  </div>
+                ):(
+                  <div className="flex items-center gap-2 p-2.5 bg-red-50 rounded-xl border border-red-200">
+                    <span className="text-sm flex-1 text-red-600 font-medium">Delete "{rw.name}"?</span>
+                    <button onClick={function(){onDeleteReward(rw.id);setCDR(null);}} className="px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-lg">Delete</button>
+                    <button onClick={function(){setCDR(null);}} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg">Keep</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {(!rewards||!rewards.length)&&<p className="text-xs text-gray-400 text-center py-3">No rewards yet — add your first below.</p>}
+        </div>
+        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mb-6">
+          <p className="text-xs font-bold text-amber-700 mb-3">+ Add New Reward</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input type="text" placeholder="🎁" value={newRewardEmoji} onChange={function(e){setNewRewardEmoji(e.target.value);}}
+              className="border border-amber-200 rounded-lg px-2 py-2 text-lg text-center outline-none focus:ring-2 focus:ring-amber-300 w-14"/>
+            <input type="text" placeholder="Reward name (e.g. Movie Night)" value={newRewardName} onChange={function(e){setNewRewardName(e.target.value);}}
+              className="border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300 flex-1 min-w-[140px]"/>
+            <input type="number" min="1" placeholder="pts" value={newRewardCost} onChange={function(e){setNewRewardCost(e.target.value);}}
+              className="border border-amber-200 rounded-lg px-2 py-2 text-sm text-center outline-none focus:ring-2 focus:ring-amber-300 w-20"/>
+            <button onClick={function(){
+              if(!newRewardName.trim()) return;
+              onAddReward({name:newRewardName.trim(),emoji:newRewardEmoji||'🎁',cost:parseInt(newRewardCost)||50});
+              setNewRewardName(""); setNewRewardEmoji("🎁"); setNewRewardCost("");
+            }} className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Add</button>
+          </div>
+        </div>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-2.5">🎉 Recent Redemptions</h3>
+        {(redemptions&&redemptions.length)
+          ? <div className="space-y-1.5">
+              {redemptions.map(function(rd){
+                var rk=kids.find(function(k){return k.id===rd.kidId;});
+                var when=new Date(rd.createdAt*1000);
+                var dateStr=when.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+when.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+                return (
+                  <div key={rd.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl border">
+                    <span className="text-xl">{rd.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-700 truncate">{rd.name}</p>
+                      <p className="text-xs text-gray-400">{rk?rk.emoji+' '+rk.name:'(removed kid)'} · {dateStr}</p>
+                    </div>
+                    <span className="text-xs font-bold text-amber-600">{rd.cost} pts</span>
+                    <button onClick={function(){onDeleteRedemption(rd.id);}} title="Mark as given / clear"
+                      className="px-2.5 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-bold rounded-lg transition">✓ Done</button>
+                  </div>
+                );
+              })}
+            </div>
+          : <p className="text-xs text-gray-400 text-center py-3">No redemptions yet.</p>
+        }
+      </div>}
+
       {/* ── SETTINGS TAB ── */}
       {tab==="settings"&&<div>
         <h3 className="font-bold text-gray-700 text-sm mb-1">🔐 Admin PIN</h3>
@@ -1289,10 +1376,11 @@ function useIsMobile() {
 }
 
 var KID_TABS = [
-  {k:'tasks', ico:'✅', label:'Tasks'},
-  {k:'pet',   ico:'🐾', label:'My Pet'},
-  {k:'adopt', ico:'🌟', label:'Adopt'},
-  {k:'shop',  ico:'🛒', label:'Shop'},
+  {k:'tasks',  ico:'✅', label:'Tasks'},
+  {k:'redeem', ico:'🎁', label:'Redeem'},
+  {k:'pet',    ico:'🐾', label:'My Pet'},
+  {k:'adopt',  ico:'🌟', label:'Adopt'},
+  {k:'shop',   ico:'🛒', label:'Shop'},
 ];
 
 // ── Shared building blocks (used by BOTH the mobile and desktop layouts) ────────
@@ -1301,27 +1389,19 @@ function KidCardGrid({kids, selId, setSelId, setKidTab, className}) {
     <div className={className}>
       {kids.map(function(k){
         var kc=C[k.color]||C.blue, sel=k.id===selId;
-        var max=maxDailyPts(k), pct=max>0?Math.min(100,Math.round(k.todayEarned/max*100)):0;
         var petSp=k.pet?getSpecies(k.pet.id):null;
         var petLow=k.pet&&k.pet.mood<30;
-        var doneCt=(k.completedToday||[]).length;
-        var totalCt=(k.tasks.basic||[]).length+(k.tasks.bonus||[]).length;
         return (
-          <button key={k.id} onClick={function(){setSelId(k.id);setKidTab('tasks');}}
+          <button key={k.id} onClick={function(){setSelId(k.id);}}
             className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm")}>
-            <div className="kid-card-head flex items-center gap-2 mb-2">
+            <div className="kid-card-head flex items-center gap-2 mb-2.5">
               <span className="kid-card-emoji text-2xl">{k.emoji}</span>
               <span className="kid-card-name font-black text-gray-800 text-sm truncate">{k.name}</span>
               {k.pet&&<span className="text-lg ml-auto flex-shrink-0" title={(petSp?petSp.name:"")+(petLow?" — needs food":"")}>{petSp ? petSp.emoji : ""}{petLow&&"🔴"}</span>}
             </div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500">Today</span>
-              <span className={"font-bold "+(k.todayEarned>=0?"text-green-600":"text-red-500")}>{k.todayEarned>=0?"+":""}{k.todayEarned} pts</span>
-            </div>
-            {max>0&&<div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5"><div className={"h-1.5 rounded-full transition-all "+kc.prog} style={{width:pct+"%"}}/></div>}
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">{doneCt}/{totalCt} tasks</span>
-              <span className={"font-bold "+kc.txt}>{k.balance} pts</span>
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs text-gray-400">Balance</span>
+              <span className={"font-black text-lg "+kc.txt}>{k.balance}<span className="text-xs font-bold"> pts</span></span>
             </div>
           </button>
         );
@@ -1330,35 +1410,19 @@ function KidCardGrid({kids, selId, setSelId, setKidTab, className}) {
   );
 }
 
+// Dashboard banner — the kid's points balance is the headline (pet lives in the yard)
 function IdentityBanner({kid, c}) {
   if(!kid) return null;
   return (
-    <div className={"identity-banner rounded-2xl border-2 "+c.border+" "+c.bg+" px-4 py-3 mb-4 flex items-center gap-3"}>
-      <span className="ib-emoji text-3xl">{kid.emoji}</span>
+    <div className={"identity-banner rounded-2xl border-2 "+c.border+" "+c.bg+" px-5 py-4 mb-4 flex items-center gap-3"}>
+      <span className="ib-emoji text-4xl">{kid.emoji}</span>
       <div className="flex-1">
-        <p className="ib-name font-black text-gray-800 text-base">Hi {kid.name}!</p>
-        <p className="ib-hint text-xs text-gray-500">Tap each task when you've done it 👇</p>
+        <p className="ib-name font-black text-gray-800 text-lg">Hi {kid.name}!</p>
+        <p className="ib-hint text-xs text-gray-500">Today: <span className={"font-bold "+(kid.todayEarned>=0?"text-green-600":"text-red-500")}>{kid.todayEarned>=0?"+":""}{kid.todayEarned} pts</span></p>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="ib-pts-label text-xs text-gray-400">Today's pts</p>
-        <p className={"ib-pts text-2xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
-      </div>
-    </div>
-  );
-}
-
-function StatsStrip({kid, c}) {
-  return (
-    <div className="stats-strip grid grid-cols-2 gap-2 mb-4">
-      <div className={"stat-box "+c.bg+" rounded-xl p-3 text-center"}>
-        <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Today</p>
-        <p className={"stat-num text-3xl font-black "+c.txt}>{kid.todayEarned>=0?"+":""}{kid.todayEarned}</p>
-        <p className="stat-unit text-xs text-gray-400">pts earned</p>
-      </div>
-      <div className="stat-box bg-indigo-50 rounded-xl p-3 text-center">
-        <p className="stat-label text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Balance</p>
-        <p className={"stat-num text-3xl font-black "+(kid.balance>=0?"text-indigo-600":"text-red-500")}>{kid.balance}</p>
-        <p className="stat-unit text-xs text-gray-400">pts total</p>
+        <p className="ib-pts-label text-xs font-bold text-gray-400 uppercase tracking-wide">Points balance</p>
+        <p className={"ib-pts text-4xl font-black leading-none "+(kid.balance>=0?c.txt:"text-red-500")}>{kid.balance}</p>
       </div>
     </div>
   );
@@ -1373,9 +1437,54 @@ function ProgressLine({kid}) {
   );
 }
 
-// Active tab body — shared between layouts (stats strip is rendered by the layout)
-function TabPanel({kid, kidTab, setKidTab, shopItems, petCatalogue, petConfig, minCost, celebrating, H}) {
-  if(kidTab==='tasks') return <TaskSection kid={kid} onComplete={H.onComplete} onUndo={H.onUndo} celebratingTasks={celebrating}/>;
+// ── Redeem Panel (kids spend points on real-world rewards parents set up) ───────
+function RedeemPanel({kid, rewards, onRedeem}) {
+  var cState=useState(null);
+  var confirmId=cState[0]; var setConfirmId=cState[1];
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-sm text-gray-500">Balance: <span className="font-bold text-indigo-600">{kid.balance} pts</span></p>
+        <p className="text-xs text-gray-400">Spend points on real treats! 🎉</p>
+      </div>
+      {!rewards.length
+        ? <p className="text-center text-gray-400 py-10">No rewards yet — ask a parent to add some! 🎁</p>
+        : <div className="space-y-2">
+            {rewards.map(function(rw){
+              var canAfford=kid.balance>=rw.cost;
+              var confirming=confirmId===rw.id;
+              return (
+                <div key={rw.id} className={"shop-row flex items-center gap-3 p-3 rounded-xl border "+(canAfford?"bg-amber-50 border-amber-200":"bg-gray-50 border-gray-200")}>
+                  <span className="shop-emoji text-2xl flex-shrink-0">{rw.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="shop-name text-sm font-bold text-gray-700 leading-tight">{rw.name}</p>
+                    <p className={"text-xs font-bold "+(canAfford?"text-amber-600":"text-gray-400")}>{rw.cost} pts{!canAfford&&" · need "+(rw.cost-kid.balance)+" more"}</p>
+                  </div>
+                  {!confirming
+                    ? <button disabled={!canAfford} onClick={function(){setConfirmId(rw.id);}}
+                        className={"shop-buy flex-shrink-0 min-w-[84px] px-3 py-2 rounded-xl font-bold text-xs transition "+(canAfford?"bg-amber-500 hover:bg-amber-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                        Redeem 🎁
+                      </button>
+                    : <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button onClick={function(){onRedeem(kid,rw);setConfirmId(null);}}
+                          className="px-3 py-2 rounded-xl font-bold text-xs bg-green-500 hover:bg-green-600 text-white transition">Confirm</button>
+                        <button onClick={function(){setConfirmId(null);}}
+                          className="px-2.5 py-2 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 text-gray-500 transition">✕</button>
+                      </div>
+                  }
+                </div>
+              );
+            })}
+          </div>
+      }
+    </div>
+  );
+}
+
+// Active tab body — shared between layouts
+function TabPanel({kid, kidTab, setKidTab, shopItems, petCatalogue, petConfig, minCost, celebrating, rewards, H}) {
+  if(kidTab==='tasks') return <div><ProgressLine kid={kid}/><TaskSection kid={kid} onComplete={H.onComplete} onUndo={H.onUndo} celebratingTasks={celebrating}/></div>;
+  if(kidTab==='redeem') return <RedeemPanel kid={kid} rewards={rewards} onRedeem={H.onRedeem}/>;
   if(kidTab==='pet') return (
     kid.pet
       ? <PetCard kid={kid} pet={kid.pet} shopItems={shopItems} petConfig={petConfig} onAction={H.onAction} onShop={function(){setKidTab('shop');}}/>
@@ -1443,11 +1552,9 @@ function MobileLayout(props) {
             })}
           </div>
           <div className="p-4">
-            <StatsStrip kid={kid} c={c}/>
-            <ProgressLine kid={kid}/>
             <TabPanel kid={kid} kidTab={kidTab} setKidTab={setKidTab} shopItems={props.shopItems}
               petCatalogue={props.petCatalogue} petConfig={props.petConfig} minCost={props.minCost}
-              celebrating={props.celebrating} H={H}/>
+              celebrating={props.celebrating} rewards={props.rewards} H={H}/>
           </div>
         </div>
       )}
@@ -1476,42 +1583,30 @@ function DesktopLayout(props) {
         </div>
       </div>
 
-      {/* Kid selector — single roomy row */}
+      {/* ── Dashboard: kid selector, points balance, and the pet habitat ── */}
       <KidCardGrid kids={kids} selId={selId} setSelId={setSelId} setKidTab={setKidTab}
-        className={"grid gap-4 mb-5 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-4")}/>
-
-      {/* Big habitat showcase — pets get center stage on the wide screen */}
+        className={"grid gap-4 mb-4 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-4")}/>
+      <IdentityBanner kid={kid} c={c}/>
       <PetYard kids={kids} shopItems={props.shopItems} petConfig={props.petConfig} onAction={H.onAction} onFeed={H.onFeed} height={320}/>
 
+      {/* Pages: main panel with a vertical side-nav (desktop-native navigation) */}
       {kid&&(
-        <div className="grid grid-cols-3 gap-5 items-start">
-          {/* Left: identity + at-a-glance stats */}
-          <aside className="col-span-1 space-y-4">
-            <IdentityBanner kid={kid} c={c}/>
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
-              <StatsStrip kid={kid} c={c}/>
-              <ProgressLine kid={kid}/>
-            </div>
-          </aside>
-
-          {/* Right: main panel with a vertical side-nav (desktop-native navigation) */}
-          <div className="col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 flex min-h-[460px]">
-            <nav className="w-48 flex-shrink-0 border-r bg-gray-50 p-3 space-y-1.5">
-              {KID_TABS.map(function(item){
-                var label=item.k==='pet'?item.label+(petMoodLow?' 🔴':''):item.label;
-                return (
-                  <button key={item.k} onClick={function(){setKidTab(item.k);}}
-                    className={"w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-left "+(kidTab===item.k?"bg-indigo-600 text-white shadow":"text-gray-500 hover:bg-gray-200")}>
-                    <span className="text-xl">{item.ico}</span><span>{label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-            <div className="flex-1 p-6 overflow-y-auto">
-              <TabPanel kid={kid} kidTab={kidTab} setKidTab={setKidTab} shopItems={props.shopItems}
-                petCatalogue={props.petCatalogue} petConfig={props.petConfig} minCost={props.minCost}
-                celebrating={props.celebrating} H={H}/>
-            </div>
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 flex min-h-[460px]">
+          <nav className="w-52 flex-shrink-0 border-r bg-gray-50 p-3 space-y-1.5">
+            {KID_TABS.map(function(item){
+              var label=item.k==='pet'?item.label+(petMoodLow?' 🔴':''):item.label;
+              return (
+                <button key={item.k} onClick={function(){setKidTab(item.k);}}
+                  className={"w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition text-left "+(kidTab===item.k?"bg-indigo-600 text-white shadow":"text-gray-500 hover:bg-gray-200")}>
+                  <span className="text-xl">{item.ico}</span><span>{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="flex-1 p-6 overflow-y-auto">
+            <TabPanel kid={kid} kidTab={kidTab} setKidTab={setKidTab} shopItems={props.shopItems}
+              petCatalogue={props.petCatalogue} petConfig={props.petConfig} minCost={props.minCost}
+              celebrating={props.celebrating} rewards={props.rewards} H={H}/>
           </div>
         </div>
       )}
@@ -1531,6 +1626,10 @@ function App() {
   var petCosts = pcState[0]; var setPetCosts = pcState[1];
   var pcfState = useState({patCost:1,playCost:2,restMinutes:10});
   var petConfig = pcfState[0]; var setPetConfig = pcfState[1];
+  var rwState = useState([]);
+  var rewards = rwState[0]; var setRewards = rwState[1];
+  var rdState = useState([]);
+  var redemptions = rdState[0]; var setRedemptions = rdState[1];
   var hpState = useState(false);
   var hasPin = hpState[0]; var setHasPin = hpState[1];
   var ldState = useState(true);
@@ -1573,6 +1672,8 @@ function App() {
     setShopItems(data.shopItems);
     setPetCosts(data.petCosts);
     if(data.petConfig) setPetConfig(data.petConfig);
+    if(data.rewards) setRewards(data.rewards);
+    if(data.redemptions) setRedemptions(data.redemptions);
     setHasPin(data.hasPin);
   }
 
@@ -1706,6 +1807,34 @@ function App() {
     var d=await callAPI('update_pet_cost',{pin:verifiedPin,speciesId:speciesId,cost:cost});
     if(d && d.error){showToast('Error saving pet cost','error');return;} applyState(d);
   }
+
+  // Kid redeems points for a real-world reward (movie night, game time, …)
+  async function handleRedeem(kidObj, reward){
+    if(!kidObj) return;
+    if(kidObj.balance<reward.cost){ showToast(kidObj.name+" needs more points for that!", 'error'); return; }
+    var d=await callAPI('redeem_reward',{kidId:kidObj.id,rewardId:reward.id});
+    if(d && d.error){ showToast(d.error||'Could not redeem','error'); return; }
+    applyState(d);
+    showToast("🎉 "+kidObj.name+" redeemed "+reward.emoji+" "+reward.name+"! Tell a parent.");
+  }
+  // Parent reward management
+  async function handleAddReward(info){
+    var d=await callAPI('add_reward',{pin:verifiedPin,name:info.name,emoji:info.emoji,cost:info.cost});
+    if(d && d.error){showToast('Error adding reward','error');return;} applyState(d); showToast(info.emoji+' '+info.name+' added!');
+  }
+  async function handleUpdateReward(rewardId,field,value){
+    var body={pin:verifiedPin,rewardId:rewardId}; body[field]=value;
+    var d=await callAPI('update_reward',body);
+    if(d && d.error){showToast('Error saving reward','error');return;} applyState(d);
+  }
+  async function handleDeleteReward(rewardId){
+    var d=await callAPI('delete_reward',{pin:verifiedPin,rewardId:rewardId});
+    if(d && d.error){showToast('Error deleting reward','error');return;} applyState(d);
+  }
+  async function handleDeleteRedemption(redemptionId){
+    var d=await callAPI('delete_redemption',{pin:verifiedPin,redemptionId:redemptionId});
+    if(d && d.error){showToast('Error clearing redemption','error');return;} applyState(d);
+  }
   async function handleNewDay(){
     var d=await callAPI('new_day',{pin:verifiedPin});
     if(d && d.error){showToast('Error resetting day','error');return;} applyState(d); showToast("🌅 New day! Tasks reset for everyone.");
@@ -1745,12 +1874,13 @@ function App() {
   var H = {
     onComplete: handleComplete, onUndo: handleUndo, onAdopt: handleAdopt,
     onBuy: handleBuy, onAction: handlePetAction, onFeed: handleFeed,
+    onRedeem: handleRedeem,
   };
   var layoutProps = {
     kids:kids, kid:kid, c:c, selId:selId, setSelId:setSelId,
     kidTab:kidTab, setKidTab:setKidTab, petMoodLow:petMoodLow,
     shopItems:shopItems, petCatalogue:petCatalogue, petConfig:petConfig,
-    minCost:minCost, celebrating:celebrating,
+    minCost:minCost, celebrating:celebrating, rewards:rewards,
     loadState:loadState, openAdmin:openAdmin, H:H,
   };
 
@@ -1772,10 +1902,13 @@ function App() {
       {showAdmin&&(
         <AdminModal
           kids={kids} shopItems={shopItems} petCatalogue={petCatalogue} petConfig={petConfig}
+          rewards={rewards} redemptions={redemptions}
           verifiedPin={verifiedPin} hasPin={hasPin}
           onUpdateKid={handleUpdateKid} onAddKid={handleAddKid} onDeleteKid={handleDeleteKid}
           onSaveTask={handleSaveTask} onDeleteTask={handleDeleteTask}
           onUpdateShop={handleUpdateShop} onUpdatePetCost={handleUpdatePetCost} onUpdatePetConfig={handleUpdatePetConfig}
+          onAddReward={handleAddReward} onUpdateReward={handleUpdateReward} onDeleteReward={handleDeleteReward}
+          onDeleteRedemption={handleDeleteRedemption}
           onNewDay={handleNewDay} onCopyTasks={handleCopyTasks}
           onComplete={handleComplete} onUndo={handleUndo}
           onChangePin={function(newPin){setVerifiedPin(newPin);}}
