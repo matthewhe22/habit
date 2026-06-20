@@ -1289,7 +1289,7 @@ function Modal({title, onClose, children, wide}) {
 }
 
 // ── PIN Modal ──────────────────────────────────────────────────────────────────
-function PinModal({hasPin, onVerified, onClose}) {
+function PinModal({hasPin, onVerified, onClose, title, subtitle, cta}) {
   var pinState = useState('');
   var pin = pinState[0]; var setPin = pinState[1];
   var errState = useState('');
@@ -1334,14 +1334,14 @@ function PinModal({hasPin, onVerified, onClose}) {
   );
 
   return (
-    <Modal title="🔐 Parent Admin PIN" onClose={onClose}>
-      <p className="text-sm text-gray-500 mb-4 text-center">Enter your PIN to access parent settings.</p>
+    <Modal title={title||"🔐 Parent Admin PIN"} onClose={onClose}>
+      <p className="text-sm text-gray-500 mb-4 text-center">{subtitle||"Enter your PIN to access parent settings."}</p>
       <div className="space-y-3">
         <input type="password" inputMode="numeric" placeholder="Enter PIN" value={pin} onChange={function(e){setPin(e.target.value);}}
           onKeyDown={function(e){if(e.key==='Enter')handleVerify();}} autoFocus
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
         {err&&<p className="text-red-500 text-sm text-center">{err}</p>}
-        <button onClick={handleVerify} disabled={busy||!pin} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3 rounded-xl transition">{busy?'Checking…':'Unlock Admin'}</button>
+        <button onClick={handleVerify} disabled={busy||!pin} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3 rounded-xl transition">{busy?'Checking…':(cta||'Unlock Admin')}</button>
       </div>
     </Modal>
   );
@@ -1923,20 +1923,24 @@ var KID_TABS = [
 ];
 
 // ── Shared building blocks (used by BOTH the mobile and desktop layouts) ────────
-function KidCardGrid({kids, selId, setSelId, setKidTab, className}) {
+function KidCardGrid({kids, selId, setSelId, setKidTab, className, locked}) {
   return (
     <div className={className}>
       {kids.map(function(k){
         var kc=C[k.color]||C.blue, sel=k.id===selId;
         var petSp=k.pet?getSpecies(k.pet.id):null;
         var petLow=k.pet&&k.pet.mood<30;
+        // When locked, other kids' cards show a padlock — tapping them asks for
+        // the parent PIN before switching.
+        var showLock=locked&&!sel;
         return (
           <button key={k.id} onClick={function(){setSelId(k.id);}}
-            className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm")}>
+            className={"kid-card p-4 rounded-2xl border-2 text-left transition "+(sel?"kid-card-active "+kc.border+" "+kc.bg+" ring-2 "+kc.ring:"border-gray-200 bg-white hover:border-gray-300 shadow-sm "+(showLock?"opacity-70":""))}>
             <div className="kid-card-head flex items-center gap-2 mb-2.5">
               <span className="kid-card-emoji text-2xl">{k.emoji}</span>
               <span className="kid-card-name font-black text-gray-800 text-sm truncate">{k.name}</span>
               {k.pet&&<span className="text-lg ml-auto flex-shrink-0" title={(petSp?petSp.name:"")+(petLow?" — needs food":"")}>{petSp ? petSp.emoji : ""}{petLow&&"🔴"}</span>}
+              {showLock&&<span className={"text-sm flex-shrink-0 "+(k.pet?"":"ml-auto")} title="Locked — parent PIN required">🔒</span>}
             </div>
             <div className="flex justify-between items-baseline">
               <span className="text-xs text-gray-400">Balance</span>
@@ -2076,7 +2080,7 @@ function MobileLayout(props) {
         </div>
       </div>
 
-      <KidCardGrid kids={kids} selId={selId} setSelId={setSelId} setKidTab={setKidTab}
+      <KidCardGrid kids={kids} selId={selId} setSelId={setSelId} setKidTab={setKidTab} locked={props.locked}
         className={"kid-grid grid gap-3 mb-4 "+(kids.length<=2?"grid-cols-2":kids.length===3?"grid-cols-3":"grid-cols-2 sm:grid-cols-4")}/>
 
       {kid&&(
@@ -2198,6 +2202,24 @@ function App() {
     try { pin ? sessionStorage.setItem('habitAdminPin',pin) : sessionStorage.removeItem('habitAdminPin'); } catch(e) {}
   }
 
+  // Active kid is remembered across reloads so the dashboard stays locked to one
+  // kid; switching to another requires the parent PIN (see selectKid).
+  var readActiveKid = function() { try { return localStorage.getItem('habitActiveKid')||''; } catch(e) { return ''; } };
+  function commitSelId(id) {
+    setSelId(id);
+    try { id ? localStorage.setItem('habitActiveKid',id) : localStorage.removeItem('habitActiveKid'); } catch(e) {}
+  }
+  var pkState = useState(null);
+  var pendingKid = pkState[0]; var setPendingKid = pkState[1];
+
+  // Gate kid switching behind the parent PIN. With no PIN set there's nothing to
+  // enforce, so switching is free.
+  function selectKid(id) {
+    if(!id || id===selId) return;
+    if(!hasPin){ commitSelId(id); return; }
+    setPendingKid(id); setSPM(true);
+  }
+
   var kid = kids.find(function(k){return k.id===selId;})||kids[0];
   var c   = C[kid && kid.color ? kid.color : 'blue']||C.blue;
   var petCatalogue = PET_SPECIES.map(function(p){
@@ -2227,7 +2249,12 @@ function App() {
     var data = await callAPI('state');
     if(data && data.error){ showToast('Could not connect to server','error'); setLoading(false); return; }
     applyState(data);
-    if(firstLoad.current && data && data.kids && data.kids.length>0){ setSelId(data.kids[0].id); firstLoad.current=false; }
+    if(firstLoad.current && data && data.kids && data.kids.length>0){
+      var stored=readActiveKid();
+      var valid=stored && data.kids.some(function(k){return k.id===stored;});
+      commitSelId(valid?stored:data.kids[0].id);
+      firstLoad.current=false;
+    }
     setLoading(false);
   },[]);
 
@@ -2334,7 +2361,7 @@ function App() {
   async function handleDeleteKid(id){
     var d=await callAPI('delete_kid',{pin:verifiedPin,kidId:id});
     if(d && d.error){showToast('Error deleting kid','error');return;} applyState(d);
-    if(selId===id){ var newKids = d && d.kids; setSelId(newKids && newKids[0] ? newKids[0].id : ''); }
+    if(selId===id){ var newKids = d && d.kids; commitSelId(newKids && newKids[0] ? newKids[0].id : ''); }
   }
   async function handleSaveTask(kidId,taskData){
     var body = Object.assign({pin:verifiedPin,kidId:kidId},taskData);
@@ -2407,6 +2434,7 @@ function App() {
   function openAdmin(){
     // Always require the PIN when opening Parent Admin, even if it was entered
     // earlier this session — clear any cached PIN so the gate can't be skipped.
+    setPendingKid(null);
     if(hasPin){ setVerifiedPin(''); setSPM(true); }
     else { setShowAdmin(true); }
   }
@@ -2429,7 +2457,7 @@ function App() {
     onRedeem: handleRedeem,
   };
   var layoutProps = {
-    kids:kids, kid:kid, c:c, selId:selId, setSelId:setSelId,
+    kids:kids, kid:kid, c:c, selId:selId, setSelId:selectKid, locked:hasPin,
     kidTab:kidTab, setKidTab:setKidTab, petMoodLow:petMoodLow,
     shopItems:shopItems, petCatalogue:petCatalogue, petConfig:petConfig,
     minCost:minCost, celebrating:celebrating, rewards:rewards,
@@ -2448,8 +2476,15 @@ function App() {
       {/* Modals (shared across both layouts) */}
       {showPinModal&&(
         <PinModal hasPin={hasPin}
-          onVerified={function(pin){setVerifiedPin(pin);setSPM(false);setShowAdmin(true);}}
-          onClose={function(){setSPM(false);}}/>
+          title={pendingKid?"🔒 Switch Kid":undefined}
+          subtitle={pendingKid?("Ask a parent to enter the PIN to open "+((kids.find(function(k){return k.id===pendingKid;})||{}).name||"another kid")+"'s dashboard."):undefined}
+          cta={pendingKid?"Unlock & Switch":undefined}
+          onVerified={function(pin){
+            setSPM(false);
+            if(pendingKid){ commitSelId(pendingKid); setPendingKid(null); }
+            else { setVerifiedPin(pin); setShowAdmin(true); }
+          }}
+          onClose={function(){setSPM(false);setPendingKid(null);}}/>
       )}
       {showAdmin&&(
         <AdminModal
