@@ -2405,7 +2405,9 @@ function App() {
   }
 
   function openAdmin(){
-    if(hasPin&&!verifiedPin){ setSPM(true); }
+    // Always require the PIN when opening Parent Admin, even if it was entered
+    // earlier this session — clear any cached PIN so the gate can't be skipped.
+    if(hasPin){ setVerifiedPin(''); setSPM(true); }
     else { setShowAdmin(true); }
   }
 
