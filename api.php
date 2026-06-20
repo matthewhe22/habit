@@ -38,6 +38,7 @@ try {
         case 'update_pet_config': requireAdmin($db,$body); echo json_encode(updatePetConfig($db, $body)); break;
         case 'new_day':        requireAdmin($db,$body); echo json_encode(newDay($db)); break;
         case 'renew_all':      requireAdmin($db,$body); echo json_encode(renewAll($db)); break;
+        case 'restart_system': requireAdmin($db,$body); echo json_encode(restartSystem($db)); break;
         case 'update_kid':     requireAdmin($db,$body); echo json_encode(updateKid($db, $body)); break;
         case 'add_kid':        requireAdmin($db,$body); echo json_encode(addKid($db, $body)); break;
         case 'delete_kid':     requireAdmin($db,$body); echo json_encode(deleteKid($db, $body)); break;
@@ -311,6 +312,21 @@ function renewAll(PDO $db): array {
     $db->beginTransaction();
     $db->exec("DELETE FROM pets;");
     $db->exec("UPDATE kids SET balance=0, today_earned=0, adoption_penalty=0;");
+    $db->commit();
+    return getState($db);
+}
+
+// Full restart for going live: wipes all test activity to a clean slate —
+// removes adopted pets, clears today's completed tasks and the entire
+// redemption history, and zeroes every kid's balances. The kids themselves,
+// their tasks, the rewards catalogue and all settings (PIN, pet config, shop &
+// pet-cost overrides) are kept so the system is ready to use immediately.
+function restartSystem(PDO $db): array {
+    $db->beginTransaction();
+    $db->exec("DELETE FROM pets;");
+    $db->exec("DELETE FROM completed_today;");
+    $db->exec("DELETE FROM redemptions;");
+    $db->exec("UPDATE kids SET balance=0, starting_balance=0, today_earned=0, adoption_penalty=0;");
     $db->commit();
     return getState($db);
 }
