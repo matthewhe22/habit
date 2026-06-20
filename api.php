@@ -432,8 +432,17 @@ function buyItem(PDO $db, array $b): array {
     $cat=shopCategoryOf($itemId)??'food';
     $db->beginTransaction();
     $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
-    if ($cat==='food')
-        $db->prepare("UPDATE pets SET hunger=MIN(100,hunger+?), joy=MIN(100,joy+5), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
+    if ($cat==='food') {
+        // Feeding tops up hunger, but any amount fed *past* full (100) is
+        // overfeeding: those wasted points instead reduce joy and growth
+        // (progress toward evolving) by the same number of points, so stuffing
+        // an already-full pet is counter-productive.
+        $curHunger=(int)$pet['hunger'];
+        $overflow=max(0,$curHunger+$moodBoost-100);
+        $newHunger=min(100,$curHunger+$moodBoost);
+        $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,MIN(100,joy+?)), growth_points=MAX(0,growth_points+?) WHERE kid_id=?")
+           ->execute([$newHunger, 5-$overflow, $growthGain-$overflow, $kidId]);
+    }
     elseif ($cat==='toys')
         $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), fatigue=MIN(100,fatigue+15), hunger=MAX(0,hunger-5), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
     elseif ($cat==='home')
