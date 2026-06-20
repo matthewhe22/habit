@@ -658,8 +658,7 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos, sceneOnl
     }
   }
   async function doRest(){
-    if(sleeping) return;
-    await onAction(kid,'rest');
+    await onAction(kid, sleeping?'wake':'rest');
   }
   async function doBath(){
     if(sleeping) return;
@@ -764,8 +763,8 @@ function LivePet({kid, shopItems, petConfig, onAction, onFeed, initPos, sceneOnl
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping||tired?"bg-gray-100 opacity-50":"bg-white/85 hover:bg-blue-100")}>⚽</button>}
           <button onClick={function(){if(!sleeping)setShowFeed(!showFeed);}} disabled={sleeping} title="Feed"
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":hungry?"bg-red-100 animate-pulse":"bg-white/85 hover:bg-green-100")}>🍎</button>
-          {!isEgg&&<button onClick={doRest} disabled={sleeping} title="Take a nap (recovers energy)"
-            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":tired?"bg-indigo-100 animate-pulse":"bg-white/85 hover:bg-indigo-100")}>💤</button>}
+          {!isEgg&&<button onClick={doRest} title={sleeping?"Wake up":"Rest (recovers energy over time)"}
+            className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-amber-100 hover:bg-amber-200":tired?"bg-indigo-100 animate-pulse":"bg-white/85 hover:bg-indigo-100")}>{sleeping?"☀️":"💤"}</button>}
           {!isEgg&&<button onClick={doBath} disabled={sleeping} title={"Give a bath"+(petConfig.bathCost>0?" — "+petConfig.bathCost+" pts":"")+" · "+daysSinceBath+"d since last bath"}
             className={"text-xs rounded-full px-1 py-0.5 shadow transition "+(sleeping?"bg-gray-100 opacity-50":bathDanger?"bg-blue-300 animate-pulse":bathWarn?"bg-blue-200":"bg-white/85 hover:bg-blue-100")}>🛁</button>}
         </div>
@@ -940,9 +939,9 @@ function HomePetScene({kid, shopItems, petConfig, onAction, onFeed, onChangePet,
           </button>
         )}
         {!isEgg&&(
-          <button onClick={function(){onAction(kid,'rest');}} disabled={isSleeping}
-            className={"py-3 rounded-xl font-bold text-sm transition "+(isSleeping?"bg-gray-100 text-gray-300":tired?"bg-indigo-200 hover:bg-indigo-300 text-indigo-700 animate-pulse":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
-            💤 Rest
+          <button onClick={function(){onAction(kid,isSleeping?'wake':'rest');}}
+            className={"py-3 rounded-xl font-bold text-sm transition "+(isSleeping?"bg-amber-100 hover:bg-amber-200 text-amber-700":tired?"bg-indigo-200 hover:bg-indigo-300 text-indigo-700 animate-pulse":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
+            {isSleeping?"☀️ Wake up":"💤 Rest"}
           </button>
         )}
         {!isEgg&&(
@@ -1029,9 +1028,9 @@ function PetCard({kid, pet, shopItems, petConfig, onShop, onAction}) {
           className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping||tired?"bg-gray-100 text-gray-300":"bg-blue-100 hover:bg-blue-200 text-blue-700")}>
           ⚽ Play{petConfig.playCost>0?" · "+petConfig.playCost+"p":""}
         </button>}
-        {!isEgg&&<button onClick={function(){onAction(kid,'rest');}} disabled={pet.sleeping}
-          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
-          💤 Rest
+        {!isEgg&&<button onClick={function(){onAction(kid,pet.sleeping?'wake':'rest');}}
+          className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-amber-100 hover:bg-amber-200 text-amber-700":"bg-indigo-100 hover:bg-indigo-200 text-indigo-700")}>
+          {pet.sleeping?"☀️ Wake":"💤 Rest"}
         </button>}
         {!isEgg&&<button onClick={function(){onAction(kid,'bath');}} disabled={pet.sleeping}
           className={"pet-act-btn flex-1 py-2 rounded-xl text-xs font-bold transition "+(pet.sleeping?"bg-gray-100 text-gray-300":bathDanger?"bg-red-200 hover:bg-red-300 text-red-700 animate-pulse":bathWarn?"bg-blue-200 hover:bg-blue-300 text-blue-700":"bg-cyan-100 hover:bg-cyan-200 text-cyan-700")}>
@@ -1148,24 +1147,25 @@ function ShopPanel({kid, shopItems, onBuy}) {
       {(shopItems.home||[]).length>0&&(
         <div className="mb-5">
           <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">🏡 Home & Beds</h3>
-          <p className="text-xs text-blue-500 mb-2 bg-blue-50 rounded-xl px-3 py-2">💤 A better bed = faster energy recovery when resting!</p>
+          <p className="text-xs text-blue-500 mb-2 bg-blue-50 rounded-xl px-3 py-2">💤 A better bed = faster energy recovery when resting! Buy once — switch any time for free.</p>
           <div className="space-y-2">
             {(shopItems.home||[]).map(function(item){
-              var isOwned=currentHomeId===item.id;
-              var canAfford=!!kid.pet&&kid.balance>=item.cost&&!isOwned;
+              var owned=((kid.pet&&kid.pet.ownedHomes)||[]).indexOf(item.id)>=0;
+              var isActive=currentHomeId===item.id;
+              var canAfford=!!kid.pet&&kid.balance>=item.cost;
               return (
-                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isOwned?"bg-green-50 border-green-200":"bg-gray-50 border-gray-200")}>
+                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isActive?"bg-green-50 border-green-200":owned?"bg-emerald-50/40 border-emerald-100":"bg-gray-50 border-gray-200")}>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>
                     <div className="min-w-0">
                       <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
-                      {isOwned&&<span className="text-xs text-green-600 font-bold ml-1.5">✓ Current home</span>}
+                      {isActive?<span className="text-xs text-green-600 font-bold ml-1.5">✓ In use</span>:owned&&<span className="text-xs text-emerald-500 font-bold ml-1.5">Owned</span>}
                       <span className="text-xs text-blue-500 ml-1.5">{item.speedBonus}× rest speed</span>
                     </div>
                   </div>
-                  <button disabled={!canAfford} onClick={function(){onBuy(item);}}
-                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isOwned?"bg-green-100 text-green-600 cursor-not-allowed":canAfford?"bg-indigo-500 hover:bg-indigo-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
-                    {isOwned?"Owned":item.cost+" pts"}
+                  <button disabled={isActive||(!owned&&!canAfford)} onClick={function(){onBuy(item);}}
+                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isActive?"bg-green-100 text-green-600 cursor-not-allowed":owned?"bg-emerald-500 hover:bg-emerald-600 text-white":canAfford?"bg-indigo-500 hover:bg-indigo-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                    {isActive?"In use":owned?"Use":item.cost+" pts"}
                   </button>
                 </div>
               );
@@ -1177,26 +1177,27 @@ function ShopPanel({kid, shopItems, onBuy}) {
       {(shopItems.backgrounds||[]).length>0&&(
         <div className="mb-5">
           <h3 className="font-bold text-gray-500 text-xs uppercase tracking-widest mb-2">🎨 Scene Backgrounds</h3>
-          <p className="text-xs text-purple-500 mb-2 bg-purple-50 rounded-xl px-3 py-2">🌈 Change your pet's home scene background!</p>
+          <p className="text-xs text-purple-500 mb-2 bg-purple-50 rounded-xl px-3 py-2">🌈 Buy a scene once — then switch between the ones you own for free!</p>
           <div className="space-y-2">
-            {(shopItems.backgrounds||[]).map(function(item){
-              var isOwned=currentBgId===item.id;
-              var canAfford=!!kid.pet&&kid.balance>=item.cost&&!isOwned;
+            {[{id:'default',name:'Grassy Field',emoji:'🌿',cost:0}].concat(shopItems.backgrounds||[]).map(function(item){
+              var owned=item.id==='default'||((kid.pet&&kid.pet.ownedBgs)||[]).indexOf(item.id)>=0;
+              var isActive=currentBgId===item.id;
+              var canAfford=!!kid.pet&&kid.balance>=item.cost;
               var bgImg=(BACKGROUNDS.find(function(b){return b.id===item.id;})||{}).image;
               return (
-                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isOwned?"bg-purple-50 border-purple-200":"bg-gray-50 border-gray-200")}>
+                <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isActive?"bg-purple-50 border-purple-200":owned?"bg-purple-50/40 border-purple-100":"bg-gray-50 border-gray-200")}>
                   <div className="flex items-center gap-2 min-w-0">
                     {bgImg
                       ? <span className="flex-shrink-0 w-12 h-9 rounded-lg bg-cover bg-center border border-gray-200" style={{backgroundImage:'url("'+bgImg+'")'}}/>
                       : <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>}
                     <div className="min-w-0">
                       <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
-                      {isOwned&&<span className="text-xs text-purple-600 font-bold ml-1.5">✓ Active</span>}
+                      {isActive?<span className="text-xs text-purple-600 font-bold ml-1.5">✓ Active</span>:owned&&item.id!=='default'&&<span className="text-xs text-purple-400 font-bold ml-1.5">Owned</span>}
                     </div>
                   </div>
-                  <button disabled={isOwned||!canAfford} onClick={function(){onBuy(item);}}
-                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isOwned?"bg-purple-100 text-purple-600 cursor-not-allowed":canAfford?"bg-purple-500 hover:bg-purple-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
-                    {isOwned?"Active":item.cost+" pts"}
+                  <button disabled={isActive||(!owned&&!canAfford)} onClick={function(){onBuy(item);}}
+                    className={"shop-buy flex-shrink-0 min-w-[64px] px-3 py-2 rounded-xl font-bold text-xs transition ml-2 "+(isActive?"bg-purple-100 text-purple-600 cursor-not-allowed":owned?"bg-purple-500 hover:bg-purple-600 text-white":canAfford?"bg-purple-500 hover:bg-purple-600 text-white":"bg-gray-200 text-gray-400 cursor-not-allowed")}>
+                    {isActive?"Active":owned?"Use":item.cost+" pts"}
                   </button>
                 </div>
               );
@@ -2313,7 +2314,7 @@ function App() {
     var sp=getSpecies(kidObj.pet.id);
     var isFood=shopItems.food.some(function(f){return f.id===item.id;});
     var isHome=(shopItems.home||[]).some(function(h){return h.id===item.id;});
-    var isBg=(shopItems.backgrounds||[]).some(function(b){return b.id===item.id;});
+    var isBg=item.id==='default'||(shopItems.backgrounds||[]).some(function(b){return b.id===item.id;});
     var isPref=isFood&&(sp.preferredFood||[]).includes(item.id);
     var growthGain=isFood?(isPref?item.moodBoost:Math.ceil(item.moodBoost/2)):Math.ceil(item.moodBoost/5);
     var d=await callAPI('buy_item',{kidId:selId,itemId:item.id,cost:item.cost,moodBoost:item.moodBoost,growthGain:growthGain});

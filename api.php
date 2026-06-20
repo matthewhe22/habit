@@ -104,7 +104,7 @@ function initDB(PDO $db): void {
         );
     ");
     // Migrate pets tables created before the petting / digital-pet features
-    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT","pet_bg TEXT"];
+    $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT","pet_bg TEXT","owned_homes TEXT","owned_bgs TEXT","rest_start INTEGER DEFAULT 0"];
     foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
     try { $db->exec("ALTER TABLE kids ADD COLUMN adoption_penalty INTEGER DEFAULT 0"); } catch (Exception $e) {}
     $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
@@ -174,8 +174,8 @@ function seedRewards(PDO $db): void {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 function getState(PDO $db): array {
-    // Wake any pet whose nap has finished: big energy recovery + a little joy
-    $db->prepare("UPDATE pets SET fatigue=MAX(0,fatigue-70), joy=MIN(100,joy+5), sleep_until=0 WHERE sleep_until>0 AND sleep_until<=?")->execute([time()]);
+    // Wake any pet whose rest has finished: a full rest fully recharges energy.
+    $db->prepare("UPDATE pets SET fatigue=0, joy=MIN(100,joy+5), sleep_until=0, rest_start=0 WHERE sleep_until>0 AND sleep_until<=?")->execute([time()]);
     $kids = [];
     foreach ($db->query("SELECT * FROM kids ORDER BY sort_order, name") as $kid) {
         $tasks = ['basic'=>[],'bonus'=>[],'penalty'=>[]];
@@ -189,6 +189,17 @@ function getState(PDO $db): array {
         $petRow = $pet->fetch();
         $lastBath = $petRow ? (int)$petRow['last_bath'] : 0;
         $daysSinceBath = ($lastBath > 0) ? (int)floor((time() - $lastBath) / 86400) : 0;
+        // While resting, energy recovers proportionally to time slept so the bar
+        // visibly climbs (the stored value is only committed when the pet wakes).
+        $displayFatigue = $petRow ? (int)$petRow['fatigue'] : 0;
+        if ($petRow) {
+            $rs = (int)$petRow['rest_start']; $su = (int)$petRow['sleep_until'];
+            if ($rs > 0 && $su > $rs) {
+                $elapsed = max(0, min(time(), $su) - $rs);
+                $recovered = (int)round(100 * $elapsed / ($su - $rs));
+                $displayFatigue = max(0, (int)$petRow['fatigue'] - $recovered);
+            }
+        }
         $kids[] = [
             'id'=>$kid['id'], 'name'=>$kid['name'], 'emoji'=>$kid['emoji'], 'color'=>$kid['color'],
             'balance'=>(int)$kid['balance'], 'startingBalance'=>(int)$kid['starting_balance'],
@@ -198,16 +209,18 @@ function getState(PDO $db): array {
             'completedToday'=>array_column($cs->fetchAll(),'task_id'),
             'pet'=>$petRow ? [
                 'id'=>$petRow['species_id'],
-                'hunger'=>(int)$petRow['hunger'], 'joy'=>(int)$petRow['joy'], 'fatigue'=>(int)$petRow['fatigue'],
+                'hunger'=>(int)$petRow['hunger'], 'joy'=>(int)$petRow['joy'], 'fatigue'=>$displayFatigue,
                 'sleepUntil'=>(int)$petRow['sleep_until'],
                 'sleeping'=>((int)$petRow['sleep_until'])>time(),
                 // overall wellness, kept as 'mood' so existing UI bits work
-                'mood'=>(int)round(((int)$petRow['hunger']+(int)$petRow['joy']+(100-(int)$petRow['fatigue']))/3),
+                'mood'=>(int)round(((int)$petRow['hunger']+(int)$petRow['joy']+(100-$displayFatigue))/3),
                 'growthPoints'=>(int)$petRow['growth_points'],
                 'hungerLowDays'=>(int)$petRow['hunger_low_days'],
                 'lastBath'=>$lastBath,
                 'daysSinceBath'=>$daysSinceBath,
                 'homeItem'=>$petRow['home_item'],
+                'ownedHomes'=>json_decode($petRow['owned_homes'] ?? '[]', true) ?: [],
+                'ownedBgs'=>json_decode($petRow['owned_bgs'] ?? '[]', true) ?: [],
                 'petName'=>$petRow['pet_name'] ?: null,
                 'petBg'=>$petRow['pet_bg'] ?: 'default',
             ] : null,
@@ -297,7 +310,7 @@ function newDay(PDO $db): array {
             $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
             continue;
         }
-        $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0, hunger_low_days=? WHERE kid_id=?")
+        $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0, rest_start=0, hunger_low_days=? WHERE kid_id=?")
            ->execute([$newHunger, $newHungerLowDays, $pet['kid_id']]);
     }
     $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;");
@@ -327,6 +340,22 @@ function petAction(PDO $db, array $b): array {
     if (!$pet) return err('No pet');
     $cfg=getPetConfig($db); $now=time();
     $sleeping=((int)$pet['sleep_until'])>$now;
+    // Active bed determines rest speed (better bed = faster recharge).
+    $speed=1.0; $homeItem=$pet['home_item']??null;
+    if($homeItem){ foreach(defaultShopItems()['home'] as $hi){ if($hi['id']===$homeItem){ $speed=(float)$hi['speedBonus']; break; } } }
+
+    // Waking is always allowed (even during the night window): bank the energy
+    // recovered so far, proportional to how long the pet has rested.
+    if ($type==='wake') {
+        $rs=(int)$pet['rest_start']; $su=(int)$pet['sleep_until'];
+        if ($su<=$now || $rs<=0) return getState($db);
+        $elapsed=max(0,min($now,$su)-$rs);
+        $recovered=(int)round(100*$elapsed/max(1,($su-$rs)));
+        $newFat=max(0,(int)$pet['fatigue']-$recovered);
+        $db->prepare("UPDATE pets SET fatigue=?, joy=MIN(100,joy+5), rest_start=0, sleep_until=0 WHERE kid_id=?")->execute([$newFat,$kidId]);
+        return getState($db);
+    }
+
     $sleepStart=(int)($cfg['sleepStart']??-1); $sleepEnd=(int)($cfg['sleepEnd']??-1);
     if($sleepStart>=0&&$sleepEnd>=0&&$sleepStart!==$sleepEnd){
         $h=(int)date('G');
@@ -335,16 +364,12 @@ function petAction(PDO $db, array $b): array {
     }
 
     if ($type==='rest') {
-        if ($sleeping) return err('Already taking a nap! 💤');
-        // Home item speeds up energy recovery
-        $restMins = $cfg['restMinutes'];
-        $homeItem = $pet['home_item'] ?? null;
-        if ($homeItem) {
-            foreach (defaultShopItems()['home'] as $hi) {
-                if ($hi['id']===$homeItem) { $restMins = max(1, (int)round($restMins / $hi['speedBonus'])); break; }
-            }
-        }
-        $db->prepare("UPDATE pets SET sleep_until=? WHERE kid_id=?")->execute([$now+$restMins*60,$kidId]);
+        if ($sleeping) return err('Already resting! 💤');
+        // A full rest takes a whole day and fully recharges energy; a faster bed
+        // shortens that (so it recharges quicker). Wake any time to bank partial
+        // recovery.
+        $fullDur = (int) round(86400 / max(0.1,$speed));
+        $db->prepare("UPDATE pets SET rest_start=?, sleep_until=? WHERE kid_id=?")->execute([$now, $now+$fullDur, $kidId]);
         return getState($db);
     }
     if ($sleeping) return err('Shh… your pet is sleeping! 💤');
@@ -422,14 +447,34 @@ function shopCategoryOf(string $id): ?string {
 function buyItem(PDO $db, array $b): array {
     $kidId=$b['kidId']??''; $itemId=$b['itemId']??''; $cost=(int)($b['cost']??0);
     $moodBoost=(int)($b['moodBoost']??0); $growthGain=(int)($b['growthGain']??0);
-    $kd=$db->prepare("SELECT balance FROM kids WHERE id=?"); $kd->execute([$kidId]);
-    $kid=$kd->fetch();
-    if (!$kid||$kid['balance']<$cost) return err('Insufficient balance');
     $hp=$db->prepare("SELECT * FROM pets WHERE kid_id=?"); $hp->execute([$kidId]);
     $pet=$hp->fetch();
     if (!$pet) return err('No pet');
-    if ((int)$pet['sleep_until']>time()) return err('Shh… your pet is sleeping! 💤');
+    $kd=$db->prepare("SELECT balance FROM kids WHERE id=?"); $kd->execute([$kidId]);
+    $kid=$kd->fetch();
     $cat=shopCategoryOf($itemId)??'food';
+    if ($itemId==='default') $cat='backgrounds'; // the free starter scene
+
+    // Beds & backgrounds are owned permanently: pay once, then switch between
+    // owned ones for free (the 'default' scene is always owned).
+    if ($cat==='home' || $cat==='backgrounds') {
+        $ownCol = $cat==='home' ? 'owned_homes' : 'owned_bgs';
+        $activeCol = $cat==='home' ? 'home_item' : 'pet_bg';
+        $owned = json_decode($pet[$ownCol] ?? '[]', true) ?: [];
+        $alreadyOwned = ($itemId==='default') || in_array($itemId, $owned, true);
+        $effCost = $alreadyOwned ? 0 : $cost;
+        if ((int)$kid['balance'] < $effCost) return err('Insufficient balance');
+        $db->beginTransaction();
+        if ($effCost > 0) $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$effCost,$kidId]);
+        if (!$alreadyOwned) { $owned[]=$itemId; $db->prepare("UPDATE pets SET $ownCol=? WHERE kid_id=?")->execute([json_encode($owned),$kidId]); }
+        $db->prepare("UPDATE pets SET $activeCol=? WHERE kid_id=?")->execute([$itemId,$kidId]);
+        $db->commit();
+        return getState($db);
+    }
+
+    // Consumables (food / toys): charged every time, and the pet must be awake.
+    if ((int)$kid['balance'] < $cost) return err('Insufficient balance');
+    if ((int)$pet['sleep_until']>time()) return err('Shh… your pet is sleeping! 💤');
     $db->beginTransaction();
     $db->prepare("UPDATE kids SET balance=balance-? WHERE id=?")->execute([$cost,$kidId]);
     if ($cat==='food') {
@@ -445,11 +490,6 @@ function buyItem(PDO $db, array $b): array {
     }
     elseif ($cat==='toys')
         $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), fatigue=MIN(100,fatigue+15), hunger=MAX(0,hunger-5), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
-    elseif ($cat==='home')
-        // Buying a home replaces any previous one — no mood effect, just sets the home_item
-        $db->prepare("UPDATE pets SET home_item=? WHERE kid_id=?")->execute([$itemId,$kidId]);
-    elseif ($cat==='backgrounds')
-        $db->prepare("UPDATE pets SET pet_bg=? WHERE kid_id=?")->execute([$itemId,$kidId]);
     else
         $db->prepare("UPDATE pets SET joy=MIN(100,joy+?), growth_points=growth_points+? WHERE kid_id=?")->execute([$moodBoost,$growthGain,$kidId]);
     $db->commit();
