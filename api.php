@@ -37,6 +37,7 @@ try {
         case 'pet_action':     echo json_encode(petAction($db, $body)); break;
         case 'update_pet_config': requireAdmin($db,$body); echo json_encode(updatePetConfig($db, $body)); break;
         case 'new_day':        requireAdmin($db,$body); echo json_encode(newDay($db)); break;
+        case 'renew_all':      requireAdmin($db,$body); echo json_encode(renewAll($db)); break;
         case 'update_kid':     requireAdmin($db,$body); echo json_encode(updateKid($db, $body)); break;
         case 'add_kid':        requireAdmin($db,$body); echo json_encode(addKid($db, $body)); break;
         case 'delete_kid':     requireAdmin($db,$body); echo json_encode(deleteKid($db, $body)); break;
@@ -300,6 +301,17 @@ function newDay(PDO $db): array {
            ->execute([$newHunger, $newHungerLowDays, $pet['kid_id']]);
     }
     $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;");
+    return getState($db);
+}
+
+// Renew every kid's record for a fresh start: zero out the current point
+// balance and remove any adopted pets. Tasks, rewards, redemption history and
+// all settings (PIN, pet config, shop & pet-cost overrides) are left untouched.
+function renewAll(PDO $db): array {
+    $db->beginTransaction();
+    $db->exec("DELETE FROM pets;");
+    $db->exec("UPDATE kids SET balance=0, today_earned=0, adoption_penalty=0;");
+    $db->commit();
     return getState($db);
 }
 
