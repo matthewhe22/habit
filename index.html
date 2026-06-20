@@ -251,15 +251,19 @@ var BACKGROUNDS = [
    gradient:'linear-gradient(to bottom,#bae6fd 0%,#e0f2fe 48%,#86efac 48%,#4ade80 100%)',
    sun:true, clouds:true, tree:true, flower:true},
   {id:'backyard',name:'Backyard',        emoji:'🏡', cost:10,
+   image:'img/bg-backyard.jpg',
    gradient:'linear-gradient(to bottom,#fef9c3 0%,#fde68a 45%,#bbf7d0 45%,#4ade80 100%)',
    sun:true, clouds:true, house:true},
   {id:'forest',  name:'Enchanted Forest',emoji:'🌲', cost:20,
+   image:'img/bg-forest.jpg',
    gradient:'linear-gradient(to bottom,#d1fae5 0%,#4ade80 45%,#166534 45%,#14532d 100%)',
    tree:true, mushroom:true},
   {id:'fantasy', name:'Fantasy Castle',  emoji:'🏰', cost:25,
+   image:'img/bg-fantasy.jpg',
    gradient:'linear-gradient(to bottom,#ede9fe 0%,#c4b5fd 45%,#6d28d9 45%,#4c1d95 100%)',
    stars:true, castle:true},
   {id:'beach',   name:'Sunny Beach',     emoji:'🏖️', cost:30,
+   image:'img/bg-beach.jpg',
    gradient:'linear-gradient(to bottom,#bae6fd 0%,#38bdf8 50%,#fde68a 50%,#fbbf24 100%)',
    sun:true, waves:true, palm:true},
 ];
@@ -847,9 +851,12 @@ function HomePetScene({kid, shopItems, petConfig, onAction, onFeed, onChangePet,
 
   return (
     <div>
-      {/* Scene */}
-      <div className="rounded-2xl border-2 border-purple-200 mb-3 relative shadow-lg" style={{height:300,background:bgDef.gradient}}>
-        <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{pointerEvents:'none'}}>
+      {/* Scene — a purchased background renders its photo; otherwise the
+          procedural gradient + emoji decorations are used. */}
+      <div className="rounded-2xl border-2 border-purple-200 mb-3 relative shadow-lg overflow-hidden" style={bgDef.image
+            ? {height:300, background:'url("'+bgDef.image+'") center/cover no-repeat, '+bgDef.gradient}
+            : {height:300, background:bgDef.gradient}}>
+        {!bgDef.image&&<div className="absolute inset-0 rounded-2xl overflow-hidden" style={{pointerEvents:'none'}}>
           {bgDef.sun&&<span style={{position:'absolute',top:8,right:14,fontSize:28}}>☀️</span>}
           {bgDef.clouds&&<><span className="cloud" style={{position:'absolute',top:10,fontSize:22,opacity:.85,animation:'cloudDrift 55s linear infinite'}}>☁️</span><span className="cloud" style={{position:'absolute',top:30,fontSize:16,opacity:.7,animation:'cloudDrift 80s linear infinite',animationDelay:'-30s'}}>☁️</span></>}
           {bgDef.tree&&<span style={{position:'absolute',bottom:6,left:10,fontSize:26}}>🌳</span>}
@@ -860,7 +867,7 @@ function HomePetScene({kid, shopItems, petConfig, onAction, onFeed, onChangePet,
           {bgDef.castle&&<span style={{position:'absolute',bottom:6,right:10,fontSize:28}}>🏰</span>}
           {bgDef.waves&&<span style={{position:'absolute',bottom:6,left:10,fontSize:24,animation:'cloudDrift 8s linear infinite'}}>🌊</span>}
           {bgDef.palm&&<span style={{position:'absolute',bottom:6,right:10,fontSize:24}}>🌴</span>}
-        </div>
+        </div>}
         <LivePet key={kid.id} kid={kidForScene} shopItems={shopItems} petConfig={petConfig} onAction={onAction} onFeed={onFeed} initPos={50} sceneOnly={true}/>
       </div>
 
@@ -1175,10 +1182,13 @@ function ShopPanel({kid, shopItems, onBuy}) {
             {(shopItems.backgrounds||[]).map(function(item){
               var isOwned=currentBgId===item.id;
               var canAfford=!!kid.pet&&kid.balance>=item.cost&&!isOwned;
+              var bgImg=(BACKGROUNDS.find(function(b){return b.id===item.id;})||{}).image;
               return (
                 <div key={item.id} className={"shop-row flex justify-between items-center p-3 rounded-xl border "+(isOwned?"bg-purple-50 border-purple-200":"bg-gray-50 border-gray-200")}>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>
+                    {bgImg
+                      ? <span className="flex-shrink-0 w-12 h-9 rounded-lg bg-cover bg-center border border-gray-200" style={{backgroundImage:'url("'+bgImg+'")'}}/>
+                      : <span className="shop-emoji text-xl flex-shrink-0">{item.emoji}</span>}
                     <div className="min-w-0">
                       <span className="shop-name text-sm font-medium text-gray-700">{item.name}</span>
                       {isOwned&&<span className="text-xs text-purple-600 font-bold ml-1.5">✓ Active</span>}
