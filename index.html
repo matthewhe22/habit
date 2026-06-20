@@ -1352,7 +1352,7 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
                      onUpdateKid, onAddKid, onDeleteKid, onSaveTask, onDeleteTask,
                      onUpdateShop, onUpdatePetCost, onUpdatePetConfig,
                      onAddReward, onUpdateReward, onDeleteReward, onDeleteRedemption,
-                     onNewDay, onRenewAll, onRestart, onChangePin, onComplete, onUndo, onCopyTasks, onClose}) {
+                     onNewDay, onRestart, onChangePin, onComplete, onUndo, onCopyTasks, onClose}) {
   var tabState = useState("today");
   var tab = tabState[0]; var setTab = tabState[1];
   var nrnState = useState("");
@@ -1379,8 +1379,6 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
   var newTaskDraft = ntdState[0]; var setNewTaskDraft = ntdState[1];
   var cndState = useState(false);
   var confirmNewDay = cndState[0]; var setCND = cndState[1];
-  var crnState = useState(false);
-  var confirmRenew = crnState[0]; var setCRN = crnState[1];
   var crsState = useState(false);
   var confirmRestart = crsState[0]; var setCRS = crsState[1];
   var cdkState = useState(null);
@@ -1879,19 +1877,6 @@ function AdminModal({kids, shopItems, petCatalogue, petConfig, rewards, redempti
             className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-center text-xl tracking-widest outline-none focus:ring-2 focus:ring-indigo-300"/>
           {pinMsg&&<p className={"text-sm "+(pinMsg.includes('✓')?"text-green-600":"text-red-500")}>{pinMsg}</p>}
           <button onClick={doChangePin} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition">{hasPin?"Change PIN":"Set PIN"}</button>
-        </div>
-
-        <div className="mt-8 pt-5 border-t">
-          <h3 className="font-bold text-gray-700 text-sm mb-1">♻️ Renew Records</h3>
-          <p className="text-xs text-gray-400 mb-3 max-w-md">Start fresh: clears every kid's current point balance and removes their adopted pets. Tasks, rewards and all settings are kept.</p>
-          {!confirmRenew
-            ? <button onClick={function(){setCRN(true);}} className="px-4 py-2 text-sm font-bold rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 transition">♻️ Renew records</button>
-            : <div className="flex items-center gap-2">
-                <span className="text-sm text-red-600 font-bold">Clear all points & pets?</span>
-                <button onClick={function(){onRenewAll();setCRN(false);}} className="px-3 py-2 text-sm font-bold rounded-xl bg-red-500 hover:bg-red-600 text-white">Yes, renew</button>
-                <button onClick={function(){setCRN(false);}} className="px-3 py-2 text-sm font-bold rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600">Cancel</button>
-              </div>
-          }
         </div>
 
         <div className="mt-8 pt-5 border-t">
@@ -2400,10 +2385,6 @@ function App() {
     var d=await callAPI('new_day',{pin:verifiedPin});
     if(d && d.error){showToast('Error resetting day','error');return;} applyState(d); showToast("🌅 New day! Tasks reset for everyone.");
   }
-  async function handleRenewAll(){
-    var d=await callAPI('renew_all',{pin:verifiedPin});
-    if(d && d.error){showToast('Error renewing records','error');return;} applyState(d); showToast("♻️ Records renewed! Point balances and pets cleared for everyone.");
-  }
   async function handleRestart(){
     var d=await callAPI('restart_system',{pin:verifiedPin});
     if(d && d.error){showToast('Error restarting','error');return;} applyState(d); showToast("🔄 Fresh start! Pets, points and test activity cleared.");
@@ -2478,7 +2459,7 @@ function App() {
           onUpdateShop={handleUpdateShop} onUpdatePetCost={handleUpdatePetCost} onUpdatePetConfig={handleUpdatePetConfig}
           onAddReward={handleAddReward} onUpdateReward={handleUpdateReward} onDeleteReward={handleDeleteReward}
           onDeleteRedemption={handleDeleteRedemption}
-          onNewDay={handleNewDay} onRenewAll={handleRenewAll} onRestart={handleRestart} onCopyTasks={handleCopyTasks}
+          onNewDay={handleNewDay} onRestart={handleRestart} onCopyTasks={handleCopyTasks}
           onComplete={handleComplete} onUndo={handleUndo}
           onChangePin={function(newPin){setVerifiedPin(newPin);}}
           onClose={function(){setShowAdmin(false);loadState();}}/>
