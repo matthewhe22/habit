@@ -178,6 +178,8 @@ function seedRewards(PDO $db): void {
 function getState(PDO $db): array {
     // Wake any pet whose rest has finished: a full rest fully recharges energy.
     $db->prepare("UPDATE pets SET fatigue=0, joy=MIN(100,joy+5), sleep_until=0, rest_start=0 WHERE sleep_until>0 AND sleep_until<=?")->execute([time()]);
+    // Drive the automatic nightly sleep cycle (auto-rest + morning hunger decay).
+    processSleepCycle($db);
     $kids = [];
     foreach ($db->query("SELECT * FROM kids ORDER BY sort_order, name") as $kid) {
         $tasks = ['basic'=>[],'bonus'=>[],'penalty'=>[]];
@@ -286,25 +288,71 @@ function undoTask(PDO $db, array $b): array {
 }
 
 function newDay(PDO $db): array {
-    // The pet life-cycle (hunger decay / starvation / bath checks) must run at
-    // most ONCE per calendar day. New Day is a manual button parents may press
-    // more than once a day (to re-reset tasks, by mistake, etc.); without this
-    // guard every extra press decayed the pets another full day, wiping out the
-    // food the kids fed today and even starving pets to death. Tasks are always
-    // reset (that part is idempotent); only the pet decay is gated by the date.
-    $today = date('Y-m-d');
-    $lastDecay = $db->query("SELECT value FROM settings WHERE key='last_pet_decay'")->fetchColumn();
-    if ($lastDecay !== $today) {
-        applyPetDailyDecay($db);
-        $db->prepare("INSERT INTO settings(key,value) VALUES('last_pet_decay',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-           ->execute([$today]);
-    }
+    // New Day only resets the day's tasks now. The pet life-cycle (energy refill,
+    // hunger decay, starvation/bath death checks) is driven automatically by the
+    // configured sleep window — see processSleepCycle() — so pressing New Day,
+    // even repeatedly, never touches the pets.
     $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;");
     return getState($db);
 }
 
-function applyPetDailyDecay(PDO $db): void {
-    // Daily pet life-cycle: each species has a different hunger decay based on adoption cost
+// Resolve the configured nightly sleep window into absolute timestamps for
+// "now": whether the pet is currently in the window, the window's start/end (if
+// in it), and the most recent past wake time (window end). Hours are 0–23 and
+// the window may wrap past midnight (e.g. 20→7). Returns zeros when no window is
+// configured.
+function sleepBounds(int $ss, int $se, int $now): array {
+    if ($ss < 0 || $se < 0 || $ss === $se) return [false, 0, 0, 0];
+    $h = (int)date('G', $now);
+    $crosses = $ss > $se;                       // window wraps past midnight
+    $inWin = $crosses ? ($h >= $ss || $h < $se) : ($h >= $ss && $h < $se);
+    $D = 86400;
+    $mid = mktime(0, 0, 0, (int)date('n', $now), (int)date('j', $now), (int)date('Y', $now));
+    $todayWake = $mid + $se * 3600;
+    $lastWake  = ($now >= $todayWake) ? $todayWake : $todayWake - $D;   // most recent morning
+    $winStart = 0; $winEnd = 0;
+    if ($inWin) {
+        if (!$crosses)      { $winStart = $mid + $ss * 3600;        $winEnd = $mid + $se * 3600; }
+        elseif ($h >= $ss)  { $winStart = $mid + $ss * 3600;        $winEnd = $mid + $D + $se * 3600; }
+        else                { $winStart = $mid - $D + $ss * 3600;   $winEnd = $mid + $se * 3600; }
+    }
+    return [$inWin, $winStart, $winEnd, $lastWake];
+}
+
+// Runs on every state read. Pets sleep automatically through the configured
+// night window; each morning when the window ends, energy refills (handled by
+// the wake-up in getState) and hunger decays once.
+function processSleepCycle(PDO $db): void {
+    $cfg = getPetConfig($db);
+    $ss = (int)$cfg['sleepStart']; $se = (int)$cfg['sleepEnd'];
+    if ($ss < 0 || $se < 0 || $ss === $se) return;   // no window → no auto life-cycle
+    $now = time();
+    [$inWin, $winStart, $winEnd, $lastWake] = sleepBounds($ss, $se, $now);
+
+    // Once per morning: decay hunger + run death checks. Guarded by the last
+    // wake timestamp so it fires exactly once per night, never on a refresh.
+    $stored = (int)($db->query("SELECT value FROM settings WHERE key='last_sleep_wake'")->fetchColumn() ?: 0);
+    if ($stored === 0) {
+        // First run after deploy: set the baseline without retro-decaying.
+        $db->prepare("INSERT INTO settings(key,value) VALUES('last_sleep_wake',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")->execute([$lastWake]);
+    } elseif ($lastWake > $stored) {
+        applyNightlyDecay($db);
+        $db->prepare("INSERT INTO settings(key,value) VALUES('last_sleep_wake',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")->execute([$lastWake]);
+    }
+
+    // During the window every pet sleeps automatically: mark the rest so the UI
+    // shows it snoozing and its energy visibly climbs to full by morning. The
+    // wake-up in getState commits fatigue=0 once the window's end passes.
+    if ($inWin) {
+        $db->prepare("UPDATE pets SET rest_start=?, sleep_until=? WHERE sleep_until<>?")
+           ->execute([$winStart, $winEnd, $winEnd]);
+    }
+}
+
+// The nightly hunger decay + death checks. Energy/joy are intentionally left
+// alone here: sleeping refills energy (the wake-up sets fatigue=0), and only
+// hunger decays each day, per the user's configured species decay rate.
+function applyNightlyDecay(PDO $db): void {
     $defaultCosts = defaultPetCosts();
     $overrides = [];
     foreach ($db->query("SELECT * FROM pet_cost_overrides") as $co) $overrides[$co['species_id']]=(int)$co['cost'];
@@ -332,7 +380,7 @@ function applyPetDailyDecay(PDO $db): void {
             $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
             continue;
         }
-        $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0, rest_start=0, hunger_low_days=? WHERE kid_id=?")
+        $db->prepare("UPDATE pets SET hunger=?, hunger_low_days=? WHERE kid_id=?")
            ->execute([$newHunger, $newHungerLowDays, $pet['kid_id']]);
     }
 }
