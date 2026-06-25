@@ -286,6 +286,24 @@ function undoTask(PDO $db, array $b): array {
 }
 
 function newDay(PDO $db): array {
+    // The pet life-cycle (hunger decay / starvation / bath checks) must run at
+    // most ONCE per calendar day. New Day is a manual button parents may press
+    // more than once a day (to re-reset tasks, by mistake, etc.); without this
+    // guard every extra press decayed the pets another full day, wiping out the
+    // food the kids fed today and even starving pets to death. Tasks are always
+    // reset (that part is idempotent); only the pet decay is gated by the date.
+    $today = date('Y-m-d');
+    $lastDecay = $db->query("SELECT value FROM settings WHERE key='last_pet_decay'")->fetchColumn();
+    if ($lastDecay !== $today) {
+        applyPetDailyDecay($db);
+        $db->prepare("INSERT INTO settings(key,value) VALUES('last_pet_decay',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+           ->execute([$today]);
+    }
+    $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;");
+    return getState($db);
+}
+
+function applyPetDailyDecay(PDO $db): void {
     // Daily pet life-cycle: each species has a different hunger decay based on adoption cost
     $defaultCosts = defaultPetCosts();
     $overrides = [];
@@ -317,8 +335,6 @@ function newDay(PDO $db): array {
         $db->prepare("UPDATE pets SET hunger=?, joy=MAX(0,joy-12), fatigue=MAX(0,fatigue-50), sleep_until=0, rest_start=0, hunger_low_days=? WHERE kid_id=?")
            ->execute([$newHunger, $newHungerLowDays, $pet['kid_id']]);
     }
-    $db->exec("DELETE FROM completed_today; UPDATE kids SET today_earned=0;");
-    return getState($db);
 }
 
 // Full restart for going live: wipes all test activity to a clean slate —
