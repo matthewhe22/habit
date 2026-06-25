@@ -107,6 +107,8 @@ function initDB(PDO $db): void {
     $mig=["last_pet INTEGER DEFAULT 0","hunger INTEGER DEFAULT 80","joy INTEGER DEFAULT 80","fatigue INTEGER DEFAULT 20","sleep_until INTEGER DEFAULT 0","hunger_low_days INTEGER DEFAULT 0","last_bath INTEGER DEFAULT 0","home_item TEXT","pet_name TEXT","pet_bg TEXT","owned_homes TEXT","owned_bgs TEXT","rest_start INTEGER DEFAULT 0"];
     foreach ($mig as $col) { try { $db->exec("ALTER TABLE pets ADD COLUMN $col"); } catch (Exception $e) {} }
     try { $db->exec("ALTER TABLE kids ADD COLUMN adoption_penalty INTEGER DEFAULT 0"); } catch (Exception $e) {}
+    // Log of pet deaths so a disappearing pet is never a mystery.
+    $db->exec("CREATE TABLE IF NOT EXISTS pet_deaths (id INTEGER PRIMARY KEY AUTOINCREMENT, kid_id TEXT, species_id TEXT, reason TEXT, died_at INTEGER)");
     $count = $db->query("SELECT COUNT(*) as c FROM kids")->fetch()['c'];
     if ($count == 0) seedData($db);
     $rc = $db->query("SELECT COUNT(*) as c FROM rewards")->fetch()['c'];
@@ -299,6 +301,7 @@ function newDay(PDO $db): array {
         $newHungerLowDays = $newHunger < 20 ? (int)$pet['hunger_low_days'] + 1 : 0;
         // Starvation: hunger below 20% for 3 consecutive days
         if ($newHungerLowDays >= 3) {
+            $db->prepare("INSERT INTO pet_deaths (kid_id,species_id,reason,died_at) VALUES (?,?,'starved',?)")->execute([$pet['kid_id'],$speciesId,$now]);
             $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]);
             $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
             continue;
@@ -306,6 +309,7 @@ function newDay(PDO $db): array {
         // Bath: pet dies if more than 10 days pass without a bath
         $lastBath = (int)$pet['last_bath'];
         if ($lastBath > 0 && ($now - $lastBath) > 864000) {
+            $db->prepare("INSERT INTO pet_deaths (kid_id,species_id,reason,died_at) VALUES (?,?,'unbathed',?)")->execute([$pet['kid_id'],$speciesId,$now]);
             $db->prepare("DELETE FROM pets WHERE kid_id=?")->execute([$pet['kid_id']]);
             $db->prepare("UPDATE kids SET adoption_penalty=1 WHERE id=?")->execute([$pet['kid_id']]);
             continue;
